@@ -8,7 +8,7 @@ using TrainMe.Classes;
 
 namespace TrainMe.ViewModels {
     public class HypnoViewModel : ObservableObject {
-        private string[] _files;
+        private VideoItem[] _files;
         private int _currentPos = 0;
         
         private Uri _currentSource;
@@ -16,7 +16,6 @@ namespace TrainMe.ViewModels {
             get => _currentSource;
             set {
                 SetProperty(ref _currentSource, value);
-                // Reset position logic might be handled by behavior or property change trigger in View
             }
         }
 
@@ -37,11 +36,6 @@ namespace TrainMe.ViewModels {
             get => _mediaState;
             set => SetProperty(ref _mediaState, value);
         }
-
-        // We'll use a simple mechanism to request Play/Pause/Stop via property or event if not binding directly to MediaElement's LoadedBehavior.
-        // Since MediaElement loaded behavior is restrictive, we often use Manual and control it via attached properties or code-behind bridging.
-        // For simplicity here, we'll expose methods that the View can call, or events the View can subscribe to.
-        // Or better: Use an action delegate or event to signal the View.
         
         public event EventHandler RequestPlay;
         public event EventHandler RequestPause;
@@ -50,11 +44,13 @@ namespace TrainMe.ViewModels {
         public HypnoViewModel() {
         }
 
-        public void SetQueue(IEnumerable<string> files) {
-            _files = files?.ToArray() ?? new string[0];
+        public void SetQueue(IEnumerable<VideoItem> files) {
+            _files = files?.ToArray() ?? new VideoItem[0];
             _currentPos = -1;
             PlayNext();
         }
+
+        private VideoItem _currentItem;
 
         public void PlayNext() {
             if (_files == null || _files.Length == 0) return;
@@ -69,16 +65,36 @@ namespace TrainMe.ViewModels {
         }
 
         private void LoadCurrentVideo() {
+            if (_currentItem != null) {
+                _currentItem.PropertyChanged -= CurrentItem_PropertyChanged;
+            }
+
             if (_files == null || _files.Length == 0 || _currentPos < 0 || _currentPos >= _files.Length) return;
 
-            var path = _files[_currentPos];
+            _currentItem = _files[_currentPos];
+            _currentItem.PropertyChanged += CurrentItem_PropertyChanged;
+            
+            var path = _currentItem.FilePath;
+            
             if (!System.IO.Path.IsPathRooted(path)) {
-                // Should handle error, maybe an error property
                 return;
             }
             
+            // Apply per-monitor/per-item settings
+            Opacity = _currentItem.Opacity;
+            Volume = _currentItem.Volume;
+            
             CurrentSource = new Uri(path, UriKind.Absolute);
             RequestPlay?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void CurrentItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
+            if (_currentItem == null) return;
+            if (e.PropertyName == nameof(VideoItem.Opacity)) {
+                Opacity = _currentItem.Opacity;
+            } else if (e.PropertyName == nameof(VideoItem.Volume)) {
+                Volume = _currentItem.Volume;
+            }
         }
 
         public void OnMediaEnded() {

@@ -11,17 +11,14 @@ namespace TrainMe.Classes {
 
         public bool IsPlaying => players.Count > 0;
 
-        public void PlayOnScreens(IEnumerable<string> files, IEnumerable<ScreenViewer> screens, double opacity, double volume) {
+        public void PlayOnScreens(IEnumerable<VideoItem> files, IEnumerable<ScreenViewer> screens) {
             StopAll();
-            var queue = NormalizeFiles(files).ToArray();
+            var queue = NormalizeItems(files).ToArray();
             foreach (var sv in screens ?? Enumerable.Empty<ScreenViewer>()) {
-                var w = new HypnoWindow();
+                var w = new HypnoWindow(sv.Screen);
                 w.Show();
-                WindowServices.MoveWindowToScreen(w, sv.Screen);
                 
-                w.ViewModel.Opacity = opacity;
-                w.ViewModel.Volume = volume;
-                w.ViewModel.SetQueue(queue); // Start playing automatically
+                w.ViewModel.SetQueue(queue); 
                 
                 players.Add(w);
             }
@@ -48,30 +45,28 @@ namespace TrainMe.Classes {
             foreach (var w in players) w.ViewModel.Opacity = opacity;
         }
 
-        public void PlayPerMonitor(IDictionary<ScreenViewer, IEnumerable<string>> assignments, double opacity, double volume) {
+        public void PlayPerMonitor(IDictionary<ScreenViewer, IEnumerable<VideoItem>> assignments) {
             StopAll();
             if (assignments == null) return;
             foreach (var kvp in assignments) {
                 var sv = kvp.Key;
-                var queue = NormalizeFiles(kvp.Value).ToArray();
+                var queue = NormalizeItems(kvp.Value).ToArray();
                 if (queue.Length == 0) continue;
-                var w = new HypnoWindow();
-                w.Show();
-                WindowServices.MoveWindowToScreen(w, sv.Screen);
                 
-                w.ViewModel.Opacity = opacity;
-                w.ViewModel.Volume = volume;
+                var w = new HypnoWindow(sv.Screen);
+                w.Show();
+                
                 w.ViewModel.SetQueue(queue);
 
                 players.Add(w);
             }
         }
 
-        IEnumerable<string> NormalizeFiles(IEnumerable<string> files) {
-            var list = new List<string>();
-            foreach (var f in files ?? Enumerable.Empty<string>()) {
-                if (Path.IsPathRooted(f)) {
-                    if (File.Exists(f)) list.Add(f);
+        IEnumerable<VideoItem> NormalizeItems(IEnumerable<VideoItem> files) {
+            var list = new List<VideoItem>();
+            foreach (var f in files ?? Enumerable.Empty<VideoItem>()) {
+                if (Path.IsPathRooted(f.FilePath)) {
+                    if (File.Exists(f.FilePath)) list.Add(f);
                 }
             }
             return list;

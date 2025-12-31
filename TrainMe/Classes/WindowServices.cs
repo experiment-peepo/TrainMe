@@ -30,38 +30,17 @@ namespace TrainMe.Classes {
 
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
-        public static void ToTransparentWindow(this Window x) {
 
-            x.SourceInitialized +=
-                delegate {
-                // Get this window's handle
-                IntPtr hwnd = new WindowInteropHelper(x).Handle;
-
-                // Change the extended window style to include WS_EX_TRANSPARENT
-                int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-
-                    SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_TRANSPARENT);
-                };
-
-
-        }
         [SupportedOSPlatform("windows")]
         public static Screen[] GetAllScreens()
         {
-#if WINDOWS
             return Screen.AllScreens;
-#else
-            return new Screen[0];
-#endif
         }
+
         [SupportedOSPlatform("windows")]
         public static int GetNumberOfScreens()
         {
-#if WINDOWS
             return Screen.AllScreens.Length;
-#else
-            return 0;
-#endif
         }
 
         public static List<ScreenViewer> GetAllScreenViewers() {
@@ -72,15 +51,19 @@ namespace TrainMe.Classes {
             return list;
         }
 
-        [SupportedOSPlatform("windows")]
         public static void MoveWindowToScreen(Window window, Screen screen) {
-#if WINDOWS
-            System.Drawing.Rectangle r = screen.WorkingArea;
-            window.Top = r.Top;
-            window.Left = r.Left;
-            window.Width = r.Width;
-            window.Height = r.Height;
-#endif
+            if (window == null || screen == null) return;
+
+            window.WindowState = WindowState.Normal;
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+
+            var workingArea = screen.WorkingArea;
+            window.Left = workingArea.Left;
+            window.Top = workingArea.Top;
+            window.Width = workingArea.Width;
+            window.Height = workingArea.Height;
+
+            window.WindowState = WindowState.Maximized;
         }
     }
 }

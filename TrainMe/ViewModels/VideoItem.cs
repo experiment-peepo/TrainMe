@@ -12,6 +12,18 @@ namespace TrainMe.ViewModels {
             set => SetProperty(ref _assignedScreen, value);
         }
 
+        private double _opacity = 0.9;
+        public double Opacity {
+            get => _opacity;
+            set => SetProperty(ref _opacity, value);
+        }
+
+        private double _volume = 1.0;
+        public double Volume {
+            get => _volume;
+            set => SetProperty(ref _volume, value);
+        }
+
         public VideoItem(string filePath, ScreenViewer defaultScreen = null) {
             FilePath = filePath;
             AssignedScreen = defaultScreen;

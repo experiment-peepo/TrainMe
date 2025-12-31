@@ -18,19 +18,20 @@ using System.Windows.Forms;
 namespace TrainMe.Classes {
     public class ScreenViewer {
         public Screen Screen;
-        public int ID;
-        internal static int Last_ID = 0;
+        public string DeviceName;
         public ScreenViewer(Screen screen) {
             Screen = screen;
-            ID = Last_ID;
-            Last_ID++;
+            DeviceName = screen.DeviceName;
         }
+
+        public override bool Equals(object obj) => obj is ScreenViewer other && other.DeviceName == this.DeviceName;
+        public override int GetHashCode() => DeviceName?.GetHashCode() ?? 0;
 
         public override string ToString() {
             var bounds = Screen?.Bounds;
-            var res = bounds.HasValue ? ($"({bounds.Value.Width}x{bounds.Value.Height})") : "";
+            var res = bounds.HasValue ? ($"{bounds.Value.Width}x{bounds.Value.Height}") : "Unknown";
             var primary = (Screen != null && Screen.Primary) ? " [Primary]" : "";
-            return $"Display {ID + 1} {res}{primary}";
+            return $"{DeviceName} ({res}){primary}";
         }
     }
 }

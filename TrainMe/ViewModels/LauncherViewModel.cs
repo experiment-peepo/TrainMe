@@ -14,30 +14,6 @@ namespace TrainMe.ViewModels {
         
         private Random random = new Random();
 
-        private double _volume;
-        public double Volume {
-            get => _volume;
-            set {
-                if (SetProperty(ref _volume, value)) {
-                    App.Settings.Volume = value;
-                    App.Settings.Save();
-                    App.VideoService.SetVolumeAll(value);
-                }
-            }
-        }
-
-        private double _opacity;
-        public double Opacity {
-            get => _opacity;
-            set {
-                if (SetProperty(ref _opacity, value)) {
-                    App.Settings.Opacity = value;
-                    App.Settings.Save();
-                    App.VideoService.SetOpacityAll(value);
-                }
-            }
-        }
-
         private bool _shuffle;
         public bool Shuffle {
             get => _shuffle;
@@ -83,13 +59,11 @@ namespace TrainMe.ViewModels {
         public ICommand RemoveSelectedCommand { get; }
         public ICommand ClearAllCommand { get; }
         public ICommand ExitCommand { get; }
-        public ICommand KofiCommand { get; }
         public ICommand MinimizeCommand { get; }
 
-        public LauncherViewModel() {
-            Volume = App.Settings.Volume;
-            Opacity = App.Settings.Opacity;
+        private System.Windows.Threading.DispatcherTimer _saveTimer;
 
+        public LauncherViewModel() {
             RefreshScreens();
 
             HypnotizeCommand = new RelayCommand(Hypnotize, _ => IsHypnotizeEnabled);
@@ -102,10 +76,38 @@ namespace TrainMe.ViewModels {
             SavePlaylistCommand = new RelayCommand(SavePlaylist);
             LoadPlaylistCommand = new RelayCommand(LoadPlaylist);
             ExitCommand = new RelayCommand(Exit);
-            KofiCommand = new RelayCommand(Kofi);
             MinimizeCommand = new RelayCommand(Minimize);
 
             UpdateButtons();
+            LoadSession();
+            
+            _saveTimer = new System.Windows.Threading.DispatcherTimer();
+            _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _saveTimer.Tick += (s, e) => {
+                _saveTimer.Stop();
+                SaveSession();
+            };
+            
+            AddedFiles.CollectionChanged += (s, e) => {
+                if (e.NewItems != null) {
+                    foreach (VideoItem item in e.NewItems) item.PropertyChanged += VideoItem_PropertyChanged;
+                }
+                if (e.OldItems != null) {
+                    foreach (VideoItem item in e.OldItems) item.PropertyChanged -= VideoItem_PropertyChanged;
+                }
+            };
+            foreach (var item in AddedFiles) item.PropertyChanged += VideoItem_PropertyChanged;
+        }
+
+        private void VideoItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
+            if (e.PropertyName == nameof(VideoItem.Opacity) || e.PropertyName == nameof(VideoItem.Volume) || e.PropertyName == nameof(VideoItem.AssignedScreen)) {
+                TriggerDebouncedSave();
+            }
+        }
+
+        private void TriggerDebouncedSave() {
+            _saveTimer.Stop();
+            _saveTimer.Start();
         }
 
         public ICommand RemoveItemCommand { get; }
@@ -116,6 +118,7 @@ namespace TrainMe.ViewModels {
             if (parameter is VideoItem item) {
                 AddedFiles.Remove(item);
                 UpdateButtons();
+                SaveSession();
             }
         }
 
@@ -144,12 +147,12 @@ namespace TrainMe.ViewModels {
             var assignments = BuildAssignmentsFromSelection(selectedItems);
             if (assignments == null || assignments.Count == 0) return;
             
-            App.VideoService.PlayPerMonitor(assignments, Opacity, Volume);
+            App.VideoService.PlayPerMonitor(assignments);
             IsDehypnotizeEnabled = true;
             IsPauseEnabled = true;
         }
 
-        private Dictionary<ScreenViewer, IEnumerable<string>> BuildAssignmentsFromSelection(System.Collections.IList selectedItems) {
+        private Dictionary<ScreenViewer, IEnumerable<VideoItem>> BuildAssignmentsFromSelection(System.Collections.IList selectedItems) {
             var selectedFiles = new List<VideoItem>();
             if (selectedItems != null && selectedItems.Count > 0) {
                 foreach (VideoItem f in selectedItems) selectedFiles.Add(f);
@@ -164,12 +167,12 @@ namespace TrainMe.ViewModels {
 
             if (Shuffle) selectedFiles = selectedFiles.OrderBy(a => random.Next()).ToList();
 
-            var assignments = new Dictionary<ScreenViewer, IEnumerable<string>>();
+            var assignments = new Dictionary<ScreenViewer, IEnumerable<VideoItem>>();
             foreach (var f in selectedFiles) {
                 var assigned = f.AssignedScreen;
                 if (assigned == null) continue;
-                if (!assignments.ContainsKey(assigned)) assignments[assigned] = new List<string>();
-                ((List<string>)assignments[assigned]).Add(f.FilePath);
+                if (!assignments.ContainsKey(assigned)) assignments[assigned] = new List<VideoItem>();
+                ((List<VideoItem>)assignments[assigned]).Add(f);
             }
             return assignments;
         }
@@ -204,13 +207,17 @@ namespace TrainMe.ViewModels {
                 
                 foreach (var f in dlg.FileNames) {
                     if (!AddedFiles.Any(x => x.FilePath == f)) {
-                        AddedFiles.Add(new VideoItem(f, primary));
+                        var item = new VideoItem(f, primary);
+                        item.Opacity = 0.9;
+                        item.Volume = 1.0;
+                        AddedFiles.Add(item);
                     }
                 }
                 UpdateButtons();
+                SaveSession();
             }
         }
-
+        
         private void RemoveSelected(object parameter) {
             var selectedItems = parameter as System.Collections.IList;
             if (selectedItems == null) return;
@@ -221,30 +228,26 @@ namespace TrainMe.ViewModels {
                 AddedFiles.Remove(f);
             }
             UpdateButtons();
+            SaveSession();
         }
 
         private void ClearAll(object obj) {
             AddedFiles.Clear();
             UpdateButtons();
+            SaveSession();
         }
 
         private void Exit(object obj) {
             if (MessageBox.Show("Exit program? All hypnosis will be terminated :(", "Exit program", MessageBoxButton.YesNo) == MessageBoxResult.Yes) {
+                SaveSession();
                 Application.Current.Shutdown();
             }
-        }
-
-        private void Kofi(object obj) {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
-                FileName = "https://ko-fi.com/damsel",
-                UseShellExecute = true
-            });
         }
 
         private void Minimize(object obj) {
             if (obj is Window w) w.WindowState = WindowState.Minimized;
         }
-        
+
         // Method to handle Drag & Drop from View
         public void AddDroppedFiles(string[] files) {
              if (AvailableScreens.Count == 0) RefreshScreens();
@@ -254,11 +257,15 @@ namespace TrainMe.ViewModels {
                  var ext = System.IO.Path.GetExtension(f)?.ToLowerInvariant();
                  if (ext == ".mp4" || ext == ".mkv" || ext == ".avi" || ext == ".mov" || ext == ".wmv") {
                      if (!AddedFiles.Any(x => x.FilePath == f)) {
-                         AddedFiles.Add(new VideoItem(f, primary));
+                         var item = new VideoItem(f, primary);
+                         item.Opacity = 0.9;
+                         item.Volume = 1.0;
+                         AddedFiles.Add(item);
                      }
                  }
              }
              UpdateButtons();
+             SaveSession();
         }
 
         public void MoveVideoItem(VideoItem item, int newIndex) {
@@ -267,6 +274,7 @@ namespace TrainMe.ViewModels {
             if (oldIndex < 0 || newIndex < 0 || newIndex >= AddedFiles.Count) return;
             
             AddedFiles.Move(oldIndex, newIndex);
+            SaveSession();
         }
 
         private void SavePlaylist(object obj) {
@@ -279,7 +287,9 @@ namespace TrainMe.ViewModels {
                 foreach (var item in AddedFiles) {
                     playlist.Items.Add(new PlaylistItem {
                         FilePath = item.FilePath,
-                        ScreenId = item.AssignedScreen?.ID ?? 0
+                        ScreenDeviceName = item.AssignedScreen?.DeviceName,
+                        Opacity = item.Opacity,
+                        Volume = item.Volume
                     });
                 }
                 
@@ -302,8 +312,11 @@ namespace TrainMe.ViewModels {
                         if (AvailableScreens.Count == 0) RefreshScreens();
                         
                         foreach (var item in playlist.Items) {
-                            var screen = AvailableScreens.FirstOrDefault(s => s.ID == item.ScreenId) ?? AvailableScreens.FirstOrDefault();
-                            AddedFiles.Add(new VideoItem(item.FilePath, screen));
+                            var screen = AvailableScreens.FirstOrDefault(s => s.DeviceName == item.ScreenDeviceName) ?? AvailableScreens.FirstOrDefault();
+                            var videoItem = new VideoItem(item.FilePath, screen);
+                            videoItem.Opacity = item.Opacity;
+                            videoItem.Volume = item.Volume;
+                            AddedFiles.Add(videoItem);
                         }
                         UpdateButtons();
                     }
@@ -311,6 +324,49 @@ namespace TrainMe.ViewModels {
                     MessageBox.Show($"Failed to load playlist: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+        }
+        private void SaveSession() {
+            try {
+                var playlistItems = AddedFiles.Select(item => new PlaylistItem {
+                    FilePath = item.FilePath,
+                    ScreenDeviceName = item.AssignedScreen?.DeviceName,
+                    Opacity = item.Opacity,
+                    Volume = item.Volume
+                }).ToList();
+
+                System.Threading.Tasks.Task.Run(() => {
+                    try {
+                        var playlist = new Playlist { Items = playlistItems };
+                        var json = System.Text.Json.JsonSerializer.Serialize(playlist);
+                        var path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "session.json");
+                        System.IO.File.WriteAllText(path, json);
+                    } catch { /* Background save failed */ }
+                });
+            } catch { /* Snapshot creation failed */ }
+        }
+
+        private void LoadSession() {
+            try {
+                var path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "session.json");
+                if (!System.IO.File.Exists(path)) return;
+
+                var json = System.IO.File.ReadAllText(path);
+                var playlist = System.Text.Json.JsonSerializer.Deserialize<Playlist>(json);
+                
+                if (playlist != null) {
+                    AddedFiles.Clear();
+                    if (AvailableScreens.Count == 0) RefreshScreens();
+                    
+                    foreach (var item in playlist.Items) {
+                        var screen = AvailableScreens.FirstOrDefault(s => s.DeviceName == item.ScreenDeviceName) ?? AvailableScreens.FirstOrDefault(s => s.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
+                        var videoItem = new VideoItem(item.FilePath, screen);
+                        videoItem.Opacity = item.Opacity;
+                        videoItem.Volume = item.Volume;
+                        AddedFiles.Add(videoItem);
+                    }
+                    UpdateButtons();
+                }
+            } catch { /* Ignore load errors */ }
         }
     }
 }

@@ -40,6 +40,58 @@
                 <Setter Property="Margin" Value="0"></Setter>
             </Style>
             
+            <Style x:Key="NeonSliderStyle" TargetType="Slider">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Grid Background="{TemplateBinding Background}">
+                                <Grid.Resources>
+                                    <Style x:Key="SliderThumbStyle" TargetType="Thumb">
+                                        <Setter Property="SnapsToDevicePixels" Value="true"/>
+                                        <Setter Property="OverridesDefaultStyle" Value="true"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Ellipse x:Name="ThumbVisual" Fill="White" Width="10" Height="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                        <Ellipse.Effect>
+                                                            <DropShadowEffect Color="#FF1493" BlurRadius="8" ShadowDepth="0" Opacity="1"/>
+                                                        </Ellipse.Effect>
+                                                    </Ellipse>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ThumbVisual" Property="Width" Value="14"/>
+                                                            <Setter TargetName="ThumbVisual" Property="Height" Value="14"/>
+                                                            <Setter TargetName="ThumbVisual" Property="Effect">
+                                                                <Setter.Value>
+                                                                    <DropShadowEffect Color="#FF1493" BlurRadius="15" ShadowDepth="0" Opacity="1"/>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Grid.Resources>
+                                <Border x:Name="TrackBackground" Background="#44FFFFFF" Height="10" CornerRadius="5" VerticalAlignment="Center" Margin="5,0" IsHitTestVisible="False"/>
+                                <Track x:Name="PART_Track">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0" IsHitTestVisible="False"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0" IsHitTestVisible="False"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource SliderThumbStyle}"/>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

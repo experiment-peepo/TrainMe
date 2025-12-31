@@ -59,8 +59,14 @@ namespace TrainMe.Windows {
                 (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
                  Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)) {
                 
+                // Don't trigger drag-drop if we are clicking on a Slider or ComboBox
+                var originalSource = e.OriginalSource as DependencyObject;
+                if (FindAncestor<Slider>(originalSource) != null || FindAncestor<ComboBox>(originalSource) != null) {
+                    return;
+                }
+
                 var listView = sender as ListView;
-                var listViewItem = FindAncestor<ListViewItem>((DependencyObject)e.OriginalSource);
+                var listViewItem = FindAncestor<ListViewItem>(originalSource);
                 if (listViewItem == null) return;
 
                 var data = (VideoItem)listView.ItemContainerGenerator.ItemFromContainer(listViewItem);
