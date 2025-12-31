@@ -123,9 +123,32 @@ namespace TrainMe.ViewModels {
         }
 
         private void RefreshScreens() {
-            AvailableScreens.Clear();
-            foreach (var s in WindowServices.GetAllScreenViewers()) {
-                AvailableScreens.Add(s);
+            try {
+                AvailableScreens.Clear();
+                foreach (var s in WindowServices.GetAllScreenViewers()) {
+                    AvailableScreens.Add(s);
+                }
+                
+                // Ensure we have at least one screen
+                if (AvailableScreens.Count == 0) {
+                    MessageBox.Show("Warning: No screens detected. Using default screen.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    // Add a default screen
+                    var defaultScreen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens.FirstOrDefault();
+                    if (defaultScreen != null) {
+                        AvailableScreens.Add(new ScreenViewer(defaultScreen));
+                    }
+                }
+            } catch (Exception ex) {
+                MessageBox.Show($"Error refreshing screens: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Add a fallback screen
+                try {
+                    var fallbackScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                    if (fallbackScreen != null) {
+                        AvailableScreens.Add(new ScreenViewer(fallbackScreen));
+                    }
+                } catch {
+                    // Last resort - continue without screens
+                }
             }
         }
 
@@ -209,7 +232,7 @@ namespace TrainMe.ViewModels {
                     if (!AddedFiles.Any(x => x.FilePath == f)) {
                         var item = new VideoItem(f, primary);
                         item.Opacity = 0.9;
-                        item.Volume = 1.0;
+                        item.Volume = 0.5;
                         AddedFiles.Add(item);
                     }
                 }
@@ -259,7 +282,7 @@ namespace TrainMe.ViewModels {
                      if (!AddedFiles.Any(x => x.FilePath == f)) {
                          var item = new VideoItem(f, primary);
                          item.Opacity = 0.9;
-                         item.Volume = 1.0;
+                         item.Volume = 0.5;
                          AddedFiles.Add(item);
                      }
                  }

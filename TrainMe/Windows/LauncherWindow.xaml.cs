@@ -6,6 +6,9 @@ using System.Windows.Input;
 using System.Windows.Media;
 using TrainMe.Classes;
 using TrainMe.ViewModels;
+using Point = System.Windows.Point;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using DragEventArgs = System.Windows.DragEventArgs;
 
 namespace TrainMe.Windows {
     public partial class LauncherWindow : Window {

@@ -18,7 +18,7 @@ namespace TrainMe.ViewModels {
             set => SetProperty(ref _opacity, value);
         }
 
-        private double _volume = 1.0;
+        private double _volume = 0.5;
         public double Volume {
             get => _volume;
             set => SetProperty(ref _volume, value);

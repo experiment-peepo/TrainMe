@@ -38,6 +38,11 @@ namespace TrainMe.Windows {
             _viewModel.OnMediaFailed(e.ErrorException);
         }
 
+        private void FirstVideo_MediaOpened(object sender, RoutedEventArgs e) {
+            // Ensure the video starts playing when it's loaded
+            FirstVideo.Play();
+        }
+
         [DllImport("user32.dll")]
         static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
         const uint SWP_NOSIZE = 0x0001;

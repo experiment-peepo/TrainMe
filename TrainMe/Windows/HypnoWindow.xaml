@@ -30,8 +30,14 @@
             LoadedBehavior="Manual"
             MediaEnded="FirstVideo_MediaEnded"
             MediaFailed="FirstVideo_MediaFailed"
+            MediaOpened="FirstVideo_MediaOpened"
             Volume="{Binding Volume}"
+            ScrubbingEnabled="True"
+            RenderOptions.BitmapScalingMode="LowQuality"
             >
+            <MediaElement.CacheMode>
+                <BitmapCache RenderAtScale="1" EnableClearType="False"/>
+            </MediaElement.CacheMode>
         </MediaElement>
     </Grid>
 </Window>

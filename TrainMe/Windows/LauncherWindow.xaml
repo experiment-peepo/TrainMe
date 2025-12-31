@@ -95,7 +95,7 @@
                                     
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                         <TextBlock Text="Op" Foreground="#888" FontSize="9" VerticalAlignment="Center" Width="15"/>
-                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Opacity}" Minimum="0" Maximum="1" Margin="0,0,10,0" 
+                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Opacity}" Minimum="0" Maximum="0.95" Margin="0,0,10,0" 
                                                 IsSnapToTickEnabled="True" SmallChange="0.01" LargeChange="0.1" TickFrequency="0.01" ToolTip="Item Opacity"/>
                                         
                                         <TextBlock Text="Vol" Foreground="#888" FontSize="9" VerticalAlignment="Center" Width="15"/>
