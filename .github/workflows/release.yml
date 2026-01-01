@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout code
@@ -40,8 +42,18 @@ jobs:
         echo "Tag version: $version"
       shell: pwsh
       
+    - name: Verify executable exists
+      run: |
+        if (-not (Test-Path "publish/TrainMeX.exe")) {
+          Write-Error "TrainMeX.exe not found in publish directory"
+          exit 1
+        }
+        $fileSize = (Get-Item "publish/TrainMeX.exe").Length
+        Write-Host "Executable found: $fileSize bytes"
+      shell: pwsh
+      
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: publish/TrainMeX.exe
         tag_name: ${{ github.ref_name }}
@@ -60,5 +72,6 @@ jobs:
           - No .NET runtime required (self-contained)
         draft: false
         prerelease: false
+        fail_on_unmatched_files: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
