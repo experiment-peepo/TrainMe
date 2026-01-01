@@ -377,15 +377,13 @@ namespace TrainMe.ViewModels {
                     return (filePath, isValid: false, errorMessage);
                 }
                 
-                // Check file size and warn if large
+                // Check file size and warn if large (no limit enforced)
                 if (FileValidator.ValidateFileSize(filePath, out long size, out bool warning)) {
                     if (warning) {
                         Logger.Info($"Large file detected: {System.IO.Path.GetFileName(filePath)} ({size / (1024.0 * 1024 * 1024):F2} GB)");
                     }
-                    return (filePath, isValid: true, errorMessage: (string)null);
-                } else {
-                    return (filePath, isValid: false, errorMessage: "File size exceeds maximum limit");
                 }
+                return (filePath, isValid: true, errorMessage: (string)null);
                 }, cancellationToken)).ToArray();
             
                 cancellationToken.ThrowIfCancellationRequested();

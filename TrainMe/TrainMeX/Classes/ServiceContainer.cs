@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 namespace TrainMeX.Classes {
@@ -6,7 +7,7 @@ namespace TrainMeX.Classes {
     /// Simple service container for dependency injection
     /// </summary>
     public class ServiceContainer {
-        private static readonly Dictionary<Type, object> _services = new Dictionary<Type, object>();
+        private static readonly ConcurrentDictionary<Type, object> _services = new ConcurrentDictionary<Type, object>();
 
         /// <summary>
         /// Registers a service instance

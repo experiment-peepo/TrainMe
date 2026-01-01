@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Windows;
@@ -17,6 +18,9 @@ namespace TrainMeX.Windows {
         public HypnoWindow(Screen targetScreen = null) {
             InitializeComponent();
             _targetScreen = targetScreen;
+            
+            // GPU acceleration is enabled at application level in App.xaml.cs
+            // WPF MediaElement uses Windows Media Foundation which automatically uses hardware acceleration
             
             _viewModel = new HypnoViewModel();
             DataContext = _viewModel;
@@ -119,6 +123,21 @@ namespace TrainMeX.Windows {
         [SupportedOSPlatform("windows")]
         private void Window_SourceInitialized(object sender, EventArgs e) {
             if (_targetScreen != null) {
+                // Validate that the target screen still exists
+                var allScreens = Screen.AllScreens;
+                bool screenExists = allScreens.Any(s => s.DeviceName == _targetScreen.DeviceName);
+                
+                if (!screenExists) {
+                    // Screen was disconnected, fallback to primary screen
+                    Logger.Warning($"Target screen {_targetScreen.DeviceName} is no longer available, falling back to primary screen");
+                    _targetScreen = Screen.PrimaryScreen ?? Screen.AllScreens.FirstOrDefault();
+                    
+                    if (_targetScreen == null) {
+                        Logger.Error("No screens available for window positioning");
+                        return;
+                    }
+                }
+                
                 IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
                 
                 // 1. Transparency

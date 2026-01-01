@@ -6,7 +6,7 @@ namespace TrainMeX.Classes {
         /// <summary>
         /// Supported video file extensions
         /// </summary>
-        public static readonly string[] VideoExtensions = { ".mp4", ".mkv", ".avi", ".mov", ".wmv" };
+        public static readonly string[] VideoExtensions = { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".m4v" };
 
         /// <summary>
         /// Maximum number of entries in the file existence cache
@@ -29,9 +29,9 @@ namespace TrainMeX.Classes {
         public const int RetryBaseDelayMs = 100;
 
         /// <summary>
-        /// Maximum file size in bytes (2GB)
+        /// Maximum file size in bytes (5GB)
         /// </summary>
-        public const long MaxFileSizeBytes = 2L * 1024 * 1024 * 1024;
+        public const long MaxFileSizeBytes = 5L * 1024 * 1024 * 1024;
 
         /// <summary>
         /// Warning threshold for file size in bytes (1GB)

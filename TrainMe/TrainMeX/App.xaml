@@ -16,34 +16,78 @@
     StartupUri="Windows/LauncherWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <!-- Color Resources - HotPink & LightPink Theme -->
+            <SolidColorBrush x:Key="BackgroundPrimary" Color="#2D0F1A"/> <!-- Dark pink base -->
+            <SolidColorBrush x:Key="BackgroundSecondary" Color="#3D1F2E"/> <!-- HotPink-tinted panels -->
+            <SolidColorBrush x:Key="BackgroundHeader" Color="#4D2F3F"/> <!-- HotPink header -->
+            <SolidColorBrush x:Key="AccentPrimary" Color="#FF69B4"/> <!-- HotPink -->
+            <SolidColorBrush x:Key="AccentSecondary" Color="#FFB6C1"/> <!-- LightPink -->
+            <SolidColorBrush x:Key="AccentHover" Color="#FF8CC5"/> <!-- Lighter HotPink hover -->
+            <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/> <!-- Pure white for maximum contrast -->
+            <SolidColorBrush x:Key="TextSecondary" Color="#FFE4E9"/> <!-- Light pink tinted for better readability -->
+            <SolidColorBrush x:Key="TextTertiary" Color="#FFD0D9"/> <!-- Lighter pink for tertiary text -->
+            <SolidColorBrush x:Key="BorderPink" Color="#FF69B4"/> <!-- HotPink border -->
+            <SolidColorBrush x:Key="SuccessColor" Color="#90EE90"/>
+            <SolidColorBrush x:Key="WarningColor" Color="#FFD700"/>
+            <SolidColorBrush x:Key="ErrorColor" Color="#F44336"/> <!-- Red for danger actions -->
+            
             <Style TargetType="Label" x:Key="MainTitle">
-                <Setter Property="Foreground" Value="DeepPink"></Setter>
-                <Setter Property="HorizontalContentAlignment" Value="Center"></Setter>
-                <Setter Property="FontSize" Value="20"></Setter>
+                <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                <Setter Property="FontSize" Value="32"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect Color="#FF69B4" BlurRadius="10" ShadowDepth="0" Opacity="0.5"/>
+                    </Setter.Value>
+                </Setter>
             </Style>
-            <Style TargetType="Label" BasedOn="{StaticResource MainTitle}"></Style>
+            <Style TargetType="Label" BasedOn="{StaticResource MainTitle}"/>
             <Style x:Key="LowerTitle" TargetType="Label" BasedOn="{StaticResource MainTitle}">
-                <Setter Property="Foreground" Value="HotPink"></Setter>
-                <Setter Property="FontSize" Value="14"></Setter>
+                <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="Normal"/>
             </Style>
             <Style TargetType="Button" x:Key="MainButton">
-                <Setter Property="BorderThickness" Value="0"></Setter>
-                <Setter Property="Padding" Value="10"></Setter>
-                <Setter Property="Foreground" Value="White"></Setter>
-                <Setter Property="Background" Value="DeepPink"></Setter>
-                <Setter Property="Margin" Value="0,1,0,0"></Setter>
-                <Setter Property="Cursor" Value="Hand"></Setter>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="16,10"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="Background" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="Margin" Value="0,1,0,0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" 
+                                    CornerRadius="8" 
+                                    Padding="{TemplateBinding Padding}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    BorderBrush="{TemplateBinding BorderBrush}">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="2" Opacity="0.2"/>
+                                </Border.Effect>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="#FF20B2AA"></Setter>
+                        <Setter Property="Background" Value="{StaticResource AccentSecondary}"/>
                         <Setter Property="Effect">
                             <Setter.Value>
-                                <DropShadowEffect Color="#FF1493" BlurRadius="10" ShadowDepth="0" Opacity="0.8"/>
+                                <DropShadowEffect Color="#FF69B4" BlurRadius="14" ShadowDepth="0" Opacity="0.7"/>
                             </Setter.Value>
                         </Setter>
+                        <Setter Property="RenderTransform">
+                            <Setter.Value>
+                                <ScaleTransform ScaleX="1.02" ScaleY="1.02"/>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
                     </Trigger>
                     <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="Background" Value="#FF008B8B"></Setter>
+                        <Setter Property="Background" Value="#FF8CC5"/>
                         <Setter Property="RenderTransform">
                             <Setter.Value>
                                 <ScaleTransform ScaleX="0.98" ScaleY="0.98"/>
@@ -51,9 +95,9 @@
                         </Setter>
                     </Trigger>
                     <Trigger Property="IsEnabled" Value="False">
-                        <Setter Property="Background" Value="#666666"></Setter>
-                        <Setter Property="Foreground" Value="#AAAAAA"></Setter>
-                        <Setter Property="Opacity" Value="0.6"></Setter>
+                        <Setter Property="Background" Value="#666666"/>
+                        <Setter Property="Foreground" Value="#AAAAAA"/>
+                        <Setter Property="Opacity" Value="0.6"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -64,28 +108,238 @@
                 <Setter Property="Margin" Value="0"></Setter>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="#FFDC143C"></Setter>
+                        <Setter Property="Background" Value="#FF8CC5"></Setter>
                         <Setter Property="Effect">
                             <Setter.Value>
-                                <DropShadowEffect Color="#FF1493" BlurRadius="8" ShadowDepth="0" Opacity="0.6"/>
+                                <DropShadowEffect Color="#FF69B4" BlurRadius="12" ShadowDepth="0" Opacity="0.8"/>
                             </Setter.Value>
                         </Setter>
                     </Trigger>
                     <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="Background" Value="#FFB22222"></Setter>
+                        <Setter Property="Background" Value="#FFB6C1"></Setter>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            
+            <!-- Primary Button Style -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource MainButton}">
+                <Setter Property="Background" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+            </Style>
+            
+            <!-- Secondary Button Style -->
+            <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource MainButton}">
+                <Setter Property="Background" Value="{StaticResource BackgroundSecondary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#4D2F3F"/>
+                        <Setter Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                        <Setter Property="Foreground" Value="{StaticResource AccentSecondary}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+            
+            <!-- Danger Button Style -->
+            <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource MainButton}">
+                <Setter Property="Background" Value="{StaticResource ErrorColor}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#E53935"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
             
             <Style x:Key="SettingsCheckBoxStyle" TargetType="CheckBox">
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
                 <Setter Property="FontSize" Value="14"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Foreground" Value="#FF20B2AA"/>
+                        <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                    </Trigger>
+                    <Trigger Property="IsChecked" Value="True">
+                        <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+            
+            <!-- ComboBox Style with Pink Border -->
+            <Style x:Key="PinkComboBoxStyle" TargetType="ComboBox">
+                <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="Background" Value="{StaticResource BackgroundSecondary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderPink}"/>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="Padding" Value="8,6"/>
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <ToggleButton Name="ToggleButton" 
+                                            Focusable="False" 
+                                            ClickMode="Press"
+                                            IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/>
+                                                    <ColumnDefinition Width="20"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border x:Name="Border" 
+                                                      Grid.ColumnSpan="2"
+                                                      Background="{TemplateBinding Background}" 
+                                                      BorderBrush="{TemplateBinding BorderBrush}" 
+                                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                                      CornerRadius="4">
+                                                </Border>
+                                                <Path x:Name="Arrow" 
+                                                    Grid.Column="1" 
+                                                    Fill="{TemplateBinding Foreground}" 
+                                                    HorizontalAlignment="Center" 
+                                                    VerticalAlignment="Center" 
+                                                    Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </Grid>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#4D2F3F"/>
+                                                    <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#4D2F3F"/>
+                                                    <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <ContentPresenter Name="ContentSite" 
+                                                IsHitTestVisible="False" 
+                                                Content="{TemplateBinding SelectionBoxItem}"
+                                                ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                Margin="8,0,23,0"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Left"/>
+                                <TextBox x:Name="PART_EditableTextBox"
+                                       Style="{x:Null}"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,23,0"
+                                       Focusable="True"
+                                       Background="Transparent"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       BorderThickness="0"
+                                       Padding="0"
+                                       IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                                <Popup Name="Popup"
+                                     Placement="Bottom"
+                                     IsOpen="{TemplateBinding IsDropDownOpen}"
+                                     AllowsTransparency="True"
+                                     Focusable="False"
+                                     PopupAnimation="Slide">
+                                    <Grid Name="DropDown"
+                                        SnapsToDevicePixels="True"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                        <Border x:Name="DropDownBorder"
+                                              Background="{StaticResource BackgroundSecondary}"
+                                              BorderThickness="1"
+                                              BorderBrush="{StaticResource BorderPink}"
+                                              CornerRadius="4"
+                                              Margin="0,2,0,0">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="2" Opacity="0.3"/>
+                                            </Border.Effect>
+                                        </Border>
+                                        <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Grid>
+                                </Popup>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                                    <Setter Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#FF69B4" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Style.Resources>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Background" Value="{StaticResource BackgroundSecondary}"/>
+                        <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="8,6"/>
+                        <Setter Property="FontSize" Value="13"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            Padding="{TemplateBinding Padding}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Radio Button Indicator -->
+                                            <Grid Grid.Column="0" Width="16" Height="16" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                <!-- Outer circle (always visible) -->
+                                                <Ellipse x:Name="OuterCircle"
+                                                         Width="16" Height="16"
+                                                         Stroke="{StaticResource AccentPrimary}"
+                                                         StrokeThickness="2"
+                                                         Fill="Transparent"/>
+                                                <!-- Inner circle (visible when selected) -->
+                                                <Ellipse x:Name="InnerCircle"
+                                                         Width="8" Height="8"
+                                                         Fill="{StaticResource AccentPrimary}"
+                                                         HorizontalAlignment="Center"
+                                                         VerticalAlignment="Center"
+                                                         Visibility="Collapsed"/>
+                                            </Grid>
+                                            
+                                            <!-- Content -->
+                                            <ContentPresenter Grid.Column="1"
+                                                            Content="{TemplateBinding Content}"
+                                                            VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#4D2F3F"/>
+                                            <Setter Property="Foreground" Value="{StaticResource AccentSecondary}"/>
+                                            <Setter TargetName="OuterCircle" Property="Stroke" Value="{StaticResource AccentSecondary}"/>
+                                            <Setter TargetName="InnerCircle" Property="Fill" Value="{StaticResource AccentSecondary}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#3D1F2E"/>
+                                            <Setter Property="Foreground" Value="{StaticResource AccentSecondary}"/>
+                                            <Setter TargetName="OuterCircle" Property="Stroke" Value="{StaticResource AccentSecondary}"/>
+                                            <Setter TargetName="InnerCircle" Property="Fill" Value="{StaticResource AccentSecondary}"/>
+                                            <Setter TargetName="InnerCircle" Property="Visibility" Value="Visible"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Style.Resources>
             </Style>
             
             <Style x:Key="NeonSliderStyle" TargetType="Slider">
@@ -102,20 +356,23 @@
                                         <Setter Property="Template">
                                             <Setter.Value>
                                                 <ControlTemplate TargetType="Thumb">
-                                                    <Ellipse x:Name="ThumbVisual" Fill="White" Width="10" Height="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                    <Ellipse x:Name="ThumbVisual" Fill="White" Width="14" Height="14" VerticalAlignment="Center" HorizontalAlignment="Center">
                                                         <Ellipse.Effect>
-                                                            <DropShadowEffect Color="#FF1493" BlurRadius="8" ShadowDepth="0" Opacity="1"/>
+                                                            <DropShadowEffect Color="#FF69B4" BlurRadius="12" ShadowDepth="0" Opacity="1"/>
                                                         </Ellipse.Effect>
                                                     </Ellipse>
                                                     <ControlTemplate.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="ThumbVisual" Property="Width" Value="14"/>
-                                                            <Setter TargetName="ThumbVisual" Property="Height" Value="14"/>
+                                                            <Setter TargetName="ThumbVisual" Property="Width" Value="18"/>
+                                                            <Setter TargetName="ThumbVisual" Property="Height" Value="18"/>
                                                             <Setter TargetName="ThumbVisual" Property="Effect">
                                                                 <Setter.Value>
-                                                                    <DropShadowEffect Color="#FF1493" BlurRadius="15" ShadowDepth="0" Opacity="1"/>
+                                                                    <DropShadowEffect Color="#FF69B4" BlurRadius="20" ShadowDepth="0" Opacity="1"/>
                                                                 </Setter.Value>
                                                             </Setter>
+                                                        </Trigger>
+                                                        <Trigger Property="IsDragging" Value="True">
+                                                            <Setter TargetName="ThumbVisual" Property="Fill" Value="{StaticResource AccentPrimary}"/>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
@@ -123,7 +380,15 @@
                                         </Setter>
                                     </Style>
                                 </Grid.Resources>
-                                <Border x:Name="TrackBackground" Background="#44FFFFFF" Height="10" CornerRadius="5" VerticalAlignment="Center" Margin="5,0" IsHitTestVisible="False"/>
+                                <!-- Track Background with gradient -->
+                                <Border x:Name="TrackBackground" Height="6" CornerRadius="3" VerticalAlignment="Center" Margin="5,0" IsHitTestVisible="False">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#33FFFFFF" Offset="0"/>
+                                            <GradientStop Color="#55FFFFFF" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
                                 <Track x:Name="PART_Track">
                                     <Track.DecreaseRepeatButton>
                                         <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0" IsHitTestVisible="False"/>

@@ -10,6 +10,7 @@ namespace TrainMeX.Classes {
         private readonly TimeSpan? _ttl;
         private readonly Dictionary<TKey, CacheEntry> _cache;
         private readonly LinkedList<TKey> _accessOrder;
+        private readonly object _lock = new object();
 
         private class CacheEntry {
             public TValue Value { get; set; }
@@ -35,56 +36,60 @@ namespace TrainMeX.Classes {
         public bool TryGetValue(TKey key, out TValue value) {
             value = default(TValue);
             
-            if (!_cache.TryGetValue(key, out var entry)) {
-                return false;
-            }
+            lock (_lock) {
+                if (!_cache.TryGetValue(key, out var entry)) {
+                    return false;
+                }
 
-            // Check if entry has expired
-            if (_ttl.HasValue && DateTime.Now - entry.CreatedAt > _ttl.Value) {
-                Remove(key);
-                return false;
-            }
+                // Check if entry has expired
+                if (_ttl.HasValue && DateTime.Now - entry.CreatedAt > _ttl.Value) {
+                    RemoveInternal(key);
+                    return false;
+                }
 
-            // Move to front (most recently used)
-            _accessOrder.Remove(entry.Node);
-            entry.Node = _accessOrder.AddFirst(key);
-            
-            value = entry.Value;
-            return true;
+                // Move to front (most recently used)
+                _accessOrder.Remove(entry.Node);
+                entry.Node = _accessOrder.AddFirst(key);
+                
+                value = entry.Value;
+                return true;
+            }
         }
 
         /// <summary>
         /// Adds or updates a value in the cache
         /// </summary>
         public void Set(TKey key, TValue value) {
-            if (_cache.TryGetValue(key, out var existingEntry)) {
-                // Update existing entry
-                existingEntry.Value = value;
-                existingEntry.CreatedAt = DateTime.Now;
-                _accessOrder.Remove(existingEntry.Node);
-                existingEntry.Node = _accessOrder.AddFirst(key);
-                return;
-            }
+            lock (_lock) {
+                if (_cache.TryGetValue(key, out var existingEntry)) {
+                    // Update existing entry
+                    existingEntry.Value = value;
+                    existingEntry.CreatedAt = DateTime.Now;
+                    _accessOrder.Remove(existingEntry.Node);
+                    existingEntry.Node = _accessOrder.AddFirst(key);
+                    return;
+                }
 
-            // Remove least recently used if at capacity
-            if (_cache.Count >= _maxSize) {
-                var lruKey = _accessOrder.Last.Value;
-                Remove(lruKey);
-            }
+                // Remove least recently used if at capacity
+                if (_cache.Count >= _maxSize) {
+                    var lruKey = _accessOrder.Last.Value;
+                    RemoveInternal(lruKey);
+                }
 
-            // Add new entry
-            var node = _accessOrder.AddFirst(key);
-            _cache[key] = new CacheEntry {
-                Value = value,
-                CreatedAt = DateTime.Now,
-                Node = node
-            };
+                // Add new entry
+                var node = _accessOrder.AddFirst(key);
+                _cache[key] = new CacheEntry {
+                    Value = value,
+                    CreatedAt = DateTime.Now,
+                    Node = node
+                };
+            }
         }
 
         /// <summary>
-        /// Removes an entry from the cache
+        /// Removes an entry from the cache (internal version without locking, assumes lock is held)
         /// </summary>
-        public void Remove(TKey key) {
+        private void RemoveInternal(TKey key) {
             if (_cache.TryGetValue(key, out var entry)) {
                 _accessOrder.Remove(entry.Node);
                 _cache.Remove(key);
@@ -92,17 +97,34 @@ namespace TrainMeX.Classes {
         }
 
         /// <summary>
+        /// Removes an entry from the cache
+        /// </summary>
+        public void Remove(TKey key) {
+            lock (_lock) {
+                RemoveInternal(key);
+            }
+        }
+
+        /// <summary>
         /// Clears all entries from the cache
         /// </summary>
         public void Clear() {
-            _cache.Clear();
-            _accessOrder.Clear();
+            lock (_lock) {
+                _cache.Clear();
+                _accessOrder.Clear();
+            }
         }
 
         /// <summary>
         /// Gets the number of entries in the cache
         /// </summary>
-        public int Count => _cache.Count;
+        public int Count {
+            get {
+                lock (_lock) {
+                    return _cache.Count;
+                }
+            }
+        }
     }
 }
 

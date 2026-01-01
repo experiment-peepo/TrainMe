@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -30,10 +31,18 @@ namespace TrainMeX.Classes {
         public override int GetHashCode() => DeviceName?.GetHashCode() ?? 0;
 
         public override string ToString() {
+            // Extract screen number from DeviceName (e.g., "\\\\.\\DISPLAY1" -> "Screen 1")
+            int screenNumber = 1;
+            if (!string.IsNullOrEmpty(DeviceName)) {
+                var match = Regex.Match(DeviceName, @"DISPLAY(\d+)", RegexOptions.IgnoreCase);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int num)) {
+                    screenNumber = num;
+                }
+            }
+            
             var bounds = Screen?.Bounds;
             var res = bounds.HasValue ? ($"{bounds.Value.Width}x{bounds.Value.Height}") : "Unknown";
-            var primary = (Screen != null && Screen.Primary) ? " [Primary]" : "";
-            return $"{DeviceName} ({res}){primary}";
+            return $"Screen {screenNumber} : {res}";
         }
     }
 }

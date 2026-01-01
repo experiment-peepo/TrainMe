@@ -63,6 +63,68 @@ namespace TrainMeX.Windows {
         }
 
         private void Grid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
+            // Allow dragging even when maximized - restore first then drag
+            if (WindowState == WindowState.Maximized) {
+                // Calculate the position to restore to based on mouse position
+                var point = PointToScreen(e.GetPosition(this));
+                WindowState = WindowState.Normal;
+                
+                // Set window position relative to mouse
+                Left = point.X - (RestoreBounds.Width * 0.5);
+                Top = point.Y - 10; // Small offset from top
+            }
+            this.DragMove();
+        }
+        
+        // Make the entire window draggable, not just the header
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
+            // Only drag if clicking on the window background, not on controls
+            if (e.OriginalSource is FrameworkElement element) {
+                // Don't drag if clicking on buttons, textboxes, or other interactive controls
+                if (element is Button || element is TextBox || element is ComboBox || 
+                    element is Slider || element is ListView || element is ListViewItem ||
+                    element is ScrollViewer || element is System.Windows.Controls.Primitives.ScrollBar) {
+                    return;
+                }
+                
+                // Check if we're clicking on a child of an interactive control
+                var parent = VisualTreeHelper.GetParent(element);
+                while (parent != null) {
+                    if (parent is Button || parent is TextBox || parent is ComboBox || 
+                        parent is Slider || parent is ListView || parent is ListViewItem ||
+                        parent is ScrollViewer || parent is System.Windows.Controls.Primitives.ScrollBar) {
+                        return;
+                    }
+                    parent = VisualTreeHelper.GetParent(parent);
+                }
+            }
+            
+            // Allow dragging even when maximized - restore first then drag
+            if (WindowState == WindowState.Maximized) {
+                // Calculate the position to restore to based on mouse position
+                var point = PointToScreen(e.GetPosition(this));
+                WindowState = WindowState.Normal;
+                
+                // Set window position relative to mouse, ensuring it's visible
+                var windowWidth = ActualWidth > 0 ? ActualWidth : Width;
+                var windowHeight = ActualHeight > 0 ? ActualHeight : Height;
+                
+                // Center window on mouse cursor
+                Left = Math.Max(0, point.X - (windowWidth * 0.5));
+                Top = Math.Max(0, point.Y - 10); // Small offset from top
+                
+                // Ensure window doesn't go off screen
+                var screen = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point((int)point.X, (int)point.Y));
+                if (screen != null) {
+                    var screenBounds = screen.WorkingArea;
+                    if (Left + windowWidth > screenBounds.Right) {
+                        Left = screenBounds.Right - windowWidth;
+                    }
+                    if (Top + windowHeight > screenBounds.Bottom) {
+                        Top = screenBounds.Bottom - windowHeight;
+                    }
+                }
+            }
             this.DragMove();
         }
 
@@ -139,6 +201,23 @@ namespace TrainMeX.Windows {
             };
             settingsWindow.ShowDialog();
         }
+
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e) {
+            if (WindowState == WindowState.Maximized) {
+                WindowState = WindowState.Normal;
+                MaximizeButton.Content = "□";
+            } else {
+                WindowState = WindowState.Maximized;
+                MaximizeButton.Content = "❐";
+            }
+        }
+
+        protected override void OnStateChanged(EventArgs e) {
+            base.OnStateChanged(e);
+            if (MaximizeButton != null) {
+                MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+            }
+        }
     }
 
     public class StringToVisibilityConverter : IValueConverter {
@@ -193,9 +272,9 @@ namespace TrainMeX.Windows {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             if (value is ViewModels.StatusMessageType messageType) {
                 return messageType switch {
-                    ViewModels.StatusMessageType.Success => new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0xFF, 0x00)), // Green with transparency
-                    ViewModels.StatusMessageType.Warning => new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0x00)), // Yellow with transparency
-                    ViewModels.StatusMessageType.Error => new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0x00, 0x00)),   // Red with transparency
+                    ViewModels.StatusMessageType.Success => new SolidColorBrush(Color.FromArgb(0x33, 0x90, 0xEE, 0x90)), // Soft green with transparency
+                    ViewModels.StatusMessageType.Warning => new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xD7, 0x00)), // Golden yellow with transparency
+                    ViewModels.StatusMessageType.Error => new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0x69, 0xB4)),   // HotPink with transparency (theme consistent)
                     _ => new SolidColorBrush(Color.FromArgb(0x33, 0x00, 0x00, 0x00)) // Default: dark with transparency
                 };
             }
@@ -208,14 +287,14 @@ namespace TrainMeX.Windows {
     }
 
     public class StatusMessageTypeToForegroundConverter : IValueConverter {
-        public static readonly StatusMessageTypeToForegroundConverter Instance = new StatusMessageTypeToForegroundConverter();
+public static readonly StatusMessageTypeToForegroundConverter Instance = new StatusMessageTypeToForegroundConverter();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             if (value is ViewModels.StatusMessageType messageType) {
                 return messageType switch {
                     ViewModels.StatusMessageType.Success => new SolidColorBrush(Color.FromArgb(0xCC, 0x90, 0xEE, 0x90)), // Light green
-                    ViewModels.StatusMessageType.Warning => new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0x00)), // Yellow
-                    ViewModels.StatusMessageType.Error => new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0x69, 0xB4)),   // Hot pink for errors (theme consistency)
+                    ViewModels.StatusMessageType.Warning => new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xD7, 0x00)), // Golden yellow
+                    ViewModels.StatusMessageType.Error => new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0x69, 0xB4)),   // HotPink for errors (theme consistency)
                     _ => new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)) // Default: white
                 };
             }
@@ -231,13 +310,13 @@ namespace TrainMeX.Windows {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             if (value is ViewModels.FileValidationStatus status) {
                 return status switch {
-                    ViewModels.FileValidationStatus.Valid => new SolidColorBrush(Color.FromArgb(0x66, 0x00, 0xFF, 0x00)), // Green border
-                    ViewModels.FileValidationStatus.Missing => new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0x00, 0x00)), // Red border
-                    ViewModels.FileValidationStatus.Invalid => new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xA5, 0x00)), // Orange border
-                    _ => new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)) // Default: white border (transparent)
+                    ViewModels.FileValidationStatus.Valid => new SolidColorBrush(Color.FromArgb(0x66, 0x90, 0xEE, 0x90)), // Soft green border
+                    ViewModels.FileValidationStatus.Missing => new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0x69, 0xB4)), // HotPink border
+                    ViewModels.FileValidationStatus.Invalid => new SolidColorBrush(Color.FromArgb(0x99, 0xFF, 0xD7, 0x00)), // Golden yellow border
+                    _ => new SolidColorBrush(Color.FromArgb(0x66, 0xFF, 0x69, 0xB4)) // Default: HotPink border
                 };
             }
-            return new SolidColorBrush(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
+            return new SolidColorBrush(Color.FromArgb(0x66, 0xFF, 0x69, 0xB4));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
@@ -280,13 +359,26 @@ namespace TrainMeX.Windows {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
             if (value is ViewModels.FileValidationStatus status) {
                 return status switch {
-                    ViewModels.FileValidationStatus.Valid => new SolidColorBrush(Color.FromRgb(0x00, 0xFF, 0x00)), // Green
-                    ViewModels.FileValidationStatus.Missing => new SolidColorBrush(Color.FromRgb(0xFF, 0x00, 0x00)), // Red
-                    ViewModels.FileValidationStatus.Invalid => new SolidColorBrush(Color.FromRgb(0xFF, 0xA5, 0x00)), // Orange
-                    _ => new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)) // White for unknown
+                    ViewModels.FileValidationStatus.Valid => new SolidColorBrush(Color.FromRgb(0x90, 0xEE, 0x90)), // Soft green
+                    ViewModels.FileValidationStatus.Missing => new SolidColorBrush(Color.FromRgb(0xFF, 0x69, 0xB4)), // HotPink
+                    ViewModels.FileValidationStatus.Invalid => new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x00)), // Golden yellow
+                    _ => new SolidColorBrush(Color.FromRgb(0xFF, 0x69, 0xB4)) // HotPink for unknown
                 };
             }
-            return new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF));
+            return new SolidColorBrush(Color.FromRgb(0xFF, 0x69, 0xB4));
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class OpacityToIntConverter : IValueConverter {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture) {
+            if (value is double opacity) {
+                return ((int)Math.Round(opacity * 100)).ToString();
+            }
+            return "0";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) {

@@ -29,12 +29,18 @@ namespace TrainMeX.Classes {
 
             // Parse key name to Key enum
             Key key;
+            uint virtualKey;
             if (Enum.TryParse<Key>(keyName, out key)) {
-                uint virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
-                RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, virtualKey);
+                virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
             } else {
                 // Fallback to End key if parsing fails
-                RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, (uint)KeyInterop.VirtualKeyFromKey(Key.End));
+                virtualKey = (uint)KeyInterop.VirtualKeyFromKey(Key.End);
+            }
+            
+            // Check return value of RegisterHotKey - log warning if registration fails
+            bool registered = RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, virtualKey);
+            if (!registered) {
+                Logger.Warning($"Failed to register panic hotkey (modifiers: {modifiers}, key: {keyName}). The hotkey may already be in use by another application.");
             }
         }
 
@@ -55,24 +61,36 @@ namespace TrainMeX.Classes {
             
             // Only unregister hotkeys if window handle is valid
             if (_windowHandle != IntPtr.Zero) {
-                UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+                bool unregistered = UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+                if (!unregistered) {
+                    Logger.Warning("Failed to unregister panic hotkey during disposal.");
+                }
             }
         }
         
         public void Reinitialize(uint modifiers, string keyName) {
             // Unregister old hotkey
             if (_windowHandle != IntPtr.Zero) {
-                UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+                bool unregistered = UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+                if (!unregistered) {
+                    Logger.Warning("Failed to unregister old panic hotkey during reinitialize.");
+                }
             }
             
             // Register new hotkey
             Key key;
+            uint virtualKey;
             if (Enum.TryParse<Key>(keyName, out key)) {
-                uint virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
-                RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, virtualKey);
+                virtualKey = (uint)KeyInterop.VirtualKeyFromKey(key);
             } else {
                 // Fallback to End key if parsing fails
-                RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, (uint)KeyInterop.VirtualKeyFromKey(Key.End));
+                virtualKey = (uint)KeyInterop.VirtualKeyFromKey(Key.End);
+            }
+            
+            // Check return value of RegisterHotKey - log warning if registration fails
+            bool registered = RegisterHotKey(_windowHandle, HOTKEY_ID_PANIC, modifiers, virtualKey);
+            if (!registered) {
+                Logger.Warning($"Failed to register panic hotkey during reinitialize (modifiers: {modifiers}, key: {keyName}). The hotkey may already be in use by another application.");
             }
         }
     }

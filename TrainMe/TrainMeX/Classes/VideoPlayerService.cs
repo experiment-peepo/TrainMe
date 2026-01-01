@@ -43,10 +43,21 @@ namespace TrainMeX.Classes {
         /// </summary>
         /// <param name="files">Video files to play</param>
         /// <param name="screens">Screens to play on</param>
-        public void PlayOnScreens(IEnumerable<VideoItem> files, IEnumerable<ScreenViewer> screens) {
+        public async System.Threading.Tasks.Task PlayOnScreensAsync(IEnumerable<VideoItem> files, IEnumerable<ScreenViewer> screens) {
             StopAll();
-            var queue = NormalizeItems(files);
+            var queue = await NormalizeItemsAsync(files);
+            var allScreens = Screen.AllScreens;
+            
             foreach (var sv in screens ?? Enumerable.Empty<ScreenViewer>()) {
+                // Validate screen still exists
+                if (sv?.Screen == null) continue;
+                bool screenExists = allScreens.Any(s => s.DeviceName == sv.Screen.DeviceName);
+                
+                if (!screenExists) {
+                    Logger.Warning($"Screen {sv.DeviceName} is no longer available, skipping");
+                    continue;
+                }
+                
                 var w = new HypnoWindow(sv.Screen);
                 w.Show();
                 
@@ -54,6 +65,17 @@ namespace TrainMeX.Classes {
                 
                 players.Add(w);
             }
+        }
+
+        /// <summary>
+        /// Plays videos on the specified screens (synchronous wrapper for backwards compatibility)
+        /// </summary>
+        /// <param name="files">Video files to play</param>
+        /// <param name="screens">Screens to play on</param>
+        [Obsolete("Use PlayOnScreensAsync instead to avoid potential deadlocks")]
+        public void PlayOnScreens(IEnumerable<VideoItem> files, IEnumerable<ScreenViewer> screens) {
+            // Use ConfigureAwait(false) to avoid deadlock if called from UI thread
+            PlayOnScreensAsync(files, screens).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -118,12 +140,27 @@ namespace TrainMeX.Classes {
         /// Plays videos on specific monitors with per-monitor assignments
         /// </summary>
         /// <param name="assignments">Dictionary mapping screens to their video playlists</param>
-        public void PlayPerMonitor(IDictionary<ScreenViewer, IEnumerable<VideoItem>> assignments) {
+        public async System.Threading.Tasks.Task PlayPerMonitorAsync(IDictionary<ScreenViewer, IEnumerable<VideoItem>> assignments) {
             StopAll();
             if (assignments == null) return;
+            var allScreens = Screen.AllScreens;
+            
             foreach (var kvp in assignments) {
                 var sv = kvp.Key;
-                var queue = NormalizeItems(kvp.Value);
+                
+                // Validate screen still exists
+                if (sv?.Screen == null) {
+                    Logger.Warning("Screen viewer has null screen, skipping");
+                    continue;
+                }
+                
+                bool screenExists = allScreens.Any(s => s.DeviceName == sv.Screen.DeviceName);
+                if (!screenExists) {
+                    Logger.Warning($"Screen {sv.DeviceName} is no longer available, skipping");
+                    continue;
+                }
+                
+                var queue = await NormalizeItemsAsync(kvp.Value);
                 if (!queue.Any()) continue;
                 
                 var w = new HypnoWindow(sv.Screen);
@@ -135,12 +172,22 @@ namespace TrainMeX.Classes {
             }
         }
 
-        IEnumerable<VideoItem> NormalizeItems(IEnumerable<VideoItem> files) {
+        /// <summary>
+        /// Plays videos on specific monitors with per-monitor assignments (synchronous wrapper for backwards compatibility)
+        /// </summary>
+        /// <param name="assignments">Dictionary mapping screens to their video playlists</param>
+        [Obsolete("Use PlayPerMonitorAsync instead to avoid potential deadlocks")]
+        public void PlayPerMonitor(IDictionary<ScreenViewer, IEnumerable<VideoItem>> assignments) {
+            // Use ConfigureAwait(false) to avoid deadlock if called from UI thread
+            PlayPerMonitorAsync(assignments).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        private async System.Threading.Tasks.Task<IEnumerable<VideoItem>> NormalizeItemsAsync(IEnumerable<VideoItem> files) {
             var list = new List<VideoItem>();
             foreach (var f in files ?? Enumerable.Empty<VideoItem>()) {
                 if (Path.IsPathRooted(f.FilePath)) {
-                    // Use synchronous version for backwards compatibility with existing code
-                    if (CheckFileExists(f.FilePath).GetAwaiter().GetResult()) list.Add(f);
+                    // Use async version to avoid deadlocks
+                    if (await CheckFileExists(f.FilePath).ConfigureAwait(false)) list.Add(f);
                 }
             }
             return list;

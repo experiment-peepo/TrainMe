@@ -10,6 +10,8 @@ namespace TrainMeX.ViewModels {
     public class HypnoViewModel : ObservableObject {
         private VideoItem[] _files;
         private int _currentPos = 0;
+        private int _consecutiveFailures = 0;
+        private const int MaxConsecutiveFailures = 10; // Stop retrying after 10 consecutive failures
         
         private Uri _currentSource;
         public Uri CurrentSource {
@@ -50,6 +52,7 @@ namespace TrainMeX.ViewModels {
             // Materialize to array for indexed access - this is necessary for PlayNext() logic
             _files = files?.ToArray() ?? Array.Empty<VideoItem>();
             _currentPos = -1;
+            _consecutiveFailures = 0; // Reset failure counter when queue changes
             PlayNext();
         }
 
@@ -93,6 +96,12 @@ namespace TrainMeX.ViewModels {
             
             CurrentSource = new Uri(path, UriKind.Absolute);
             RequestPlay?.Invoke(this, EventArgs.Empty);
+            
+            // Reset failure counter when successfully loading a new video
+            // (will be reset again on MediaEnded, but this handles the case where video starts playing)
+            if (_consecutiveFailures > 0) {
+                _consecutiveFailures = 0;
+            }
         }
 
         private void CurrentItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
@@ -105,6 +114,7 @@ namespace TrainMeX.ViewModels {
         }
 
         public void OnMediaEnded() {
+            _consecutiveFailures = 0; // Reset failure counter on successful playback
             PlayNext();
         }
 
@@ -114,8 +124,19 @@ namespace TrainMeX.ViewModels {
             
             Logger.Error(errorMessage, ex);
             
+            // Increment failure counter
+            _consecutiveFailures++;
+            
             // Notify listeners (e.g., UI) about the error
             MediaErrorOccurred?.Invoke(this, new MediaErrorEventArgs($"{errorMessage}. Error: {ex?.Message ?? "Unknown error"}"));
+            
+            // Stop retrying if we've exceeded the failure threshold
+            // This prevents infinite retry loops when all videos fail
+            if (_consecutiveFailures >= MaxConsecutiveFailures) {
+                Logger.Warning($"Stopped retrying after {MaxConsecutiveFailures} consecutive failures. All videos in queue may be invalid.");
+                MediaErrorOccurred?.Invoke(this, new MediaErrorEventArgs($"Playback stopped after {MaxConsecutiveFailures} consecutive failures. Please check your video files."));
+                return;
+            }
             
             // Skip to next video to avoid getting stuck
             PlayNext();

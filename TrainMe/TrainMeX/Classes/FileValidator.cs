@@ -62,12 +62,12 @@ namespace TrainMeX.Classes {
         }
 
         /// <summary>
-        /// Validates file size is within acceptable limits
+        /// Gets file size and warning threshold (no size limit enforced)
         /// </summary>
         /// <param name="filePath">The file path</param>
         /// <param name="sizeBytes">Output parameter for file size</param>
         /// <param name="warningThreshold">Output parameter indicating if file exceeds warning threshold</param>
-        /// <returns>True if file size is acceptable, false if too large</returns>
+        /// <returns>True if file exists and size was retrieved, false otherwise</returns>
         public static bool ValidateFileSize(string filePath, out long sizeBytes, out bool warningThreshold) {
             sizeBytes = 0;
             warningThreshold = false;
@@ -78,7 +78,8 @@ namespace TrainMeX.Classes {
             sizeBytes = size.Value;
             warningThreshold = sizeBytes > Constants.FileSizeWarningThreshold;
             
-            return sizeBytes <= Constants.MaxFileSizeBytes;
+            // No size limit - always return true if file exists
+            return true;
         }
 
         /// <summary>
@@ -138,12 +139,19 @@ namespace TrainMeX.Classes {
                 return false;
             }
             
-            if (!ValidateFileSize(filePath, out long size, out bool warning)) {
-                var maxGB = Constants.MaxFileSizeBytes / (1024L * 1024 * 1024);
-                var fileGB = size / (1024.0 * 1024 * 1024);
-                errorMessage = $"File size ({fileGB:F2} GB) exceeds maximum limit ({maxGB} GB). Please use a smaller file.";
-                return false;
+            // Check if path points to a directory instead of a file
+            try {
+                var attributes = File.GetAttributes(filePath);
+                if ((attributes & FileAttributes.Directory) == FileAttributes.Directory) {
+                    errorMessage = "The specified path points to a directory, not a file.";
+                    return false;
+                }
+            } catch (Exception ex) {
+                // If we can't check attributes, log but don't fail validation
+                Logger.Warning($"Could not check file attributes for: {filePath}", ex);
             }
+            
+            // File size validation removed - no limit enforced
             
             return true;
         }

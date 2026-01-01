@@ -29,9 +29,9 @@ namespace TrainMeX.Classes {
         public const int RetryBaseDelayMs = 100;
 
         /// <summary>
-        /// Maximum file size in bytes (2GB)
+        /// Maximum file size in bytes (5GB)
         /// </summary>
-        public const long MaxFileSizeBytes = 2L * 1024 * 1024 * 1024;
+        public const long MaxFileSizeBytes = 5L * 1024 * 1024 * 1024;
 
         /// <summary>
         /// Warning threshold for file size in bytes (1GB)

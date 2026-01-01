@@ -119,6 +119,14 @@ namespace TrainMeX.Tests {
         }
 
         [Fact]
+        public void HasValidExtension_WithM4v_ReturnsTrue() {
+            var m4vFile = Path.Combine(_testDirectory, "test.m4v");
+            File.WriteAllText(m4vFile, "content");
+            var result = FileValidator.HasValidExtension(m4vFile);
+            Assert.True(result);
+        }
+
+        [Fact]
         public void HasValidExtension_WithCaseInsensitive_ReturnsTrue() {
             var upperCaseFile = Path.Combine(_testDirectory, "test.MP4");
             File.WriteAllText(upperCaseFile, "content");
