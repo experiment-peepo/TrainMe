@@ -53,8 +53,12 @@ namespace TrainMe.Classes {
 
         public void Dispose() {
             _source?.RemoveHook(HwndHook);
-            UnregisterHotKey(_windowHandle, HOTKEY_ID_PAUSE);
-            UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+            
+            // Only unregister hotkeys if window handle is valid
+            if (_windowHandle != IntPtr.Zero) {
+                UnregisterHotKey(_windowHandle, HOTKEY_ID_PAUSE);
+                UnregisterHotKey(_windowHandle, HOTKEY_ID_PANIC);
+            }
         }
     }
 }

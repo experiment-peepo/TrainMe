@@ -8,13 +8,15 @@
     <AssemblyName>TrainMe</AssemblyName>
     <ApplicationIcon>Images\icon.ico</ApplicationIcon>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
     <Resource Include="Images\**\*" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
 </Project>

@@ -11,11 +11,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace TrainMe.Classes {
+    [SupportedOSPlatform("windows")]
     public class ScreenViewer {
         public Screen Screen;
         public string DeviceName;

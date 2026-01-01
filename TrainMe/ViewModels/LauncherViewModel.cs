@@ -2,13 +2,29 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using TrainMe.Classes;
 using Microsoft.Win32;
 
 namespace TrainMe.ViewModels {
-    public class LauncherViewModel : ObservableObject {
+    /// <summary>
+    /// Type of status message for styling purposes
+    /// </summary>
+    public enum StatusMessageType {
+        Info,
+        Success,
+        Warning,
+        Error
+    }
+
+    /// <summary>
+    /// ViewModel for the main launcher window, managing video files, screens, and playback
+    /// </summary>
+    public class LauncherViewModel : ObservableObject, IDisposable {
         public ObservableCollection<VideoItem> AddedFiles { get; } = new ObservableCollection<VideoItem>();
         public ObservableCollection<ScreenViewer> AvailableScreens { get; } = new ObservableCollection<ScreenViewer>();
         
@@ -51,6 +67,33 @@ namespace TrainMe.ViewModels {
         }
 
         private bool _pauseClicked;
+        private bool _allFilesAssigned = false;
+        private string _statusMessage;
+        private StatusMessageType _statusMessageType = StatusMessageType.Info;
+        private bool _isLoading;
+
+        public string StatusMessage {
+            get => _statusMessage;
+            set => SetProperty(ref _statusMessage, value);
+        }
+
+        public StatusMessageType StatusMessageType {
+            get => _statusMessageType;
+            set => SetProperty(ref _statusMessageType, value);
+        }
+
+        /// <summary>
+        /// Helper method to set status message with type
+        /// </summary>
+        private void SetStatusMessage(string message, StatusMessageType type = StatusMessageType.Info) {
+            StatusMessage = message;
+            StatusMessageType = type;
+        }
+
+        public bool IsLoading {
+            get => _isLoading;
+            set => SetProperty(ref _isLoading, value);
+        }
 
         public ICommand HypnotizeCommand { get; }
         public ICommand DehypnotizeCommand { get; }
@@ -62,8 +105,10 @@ namespace TrainMe.ViewModels {
         public ICommand MinimizeCommand { get; }
 
         private System.Windows.Threading.DispatcherTimer _saveTimer;
+        private CancellationTokenSource _cancellationTokenSource;
 
         public LauncherViewModel() {
+            _cancellationTokenSource = new CancellationTokenSource();
             RefreshScreens();
 
             HypnotizeCommand = new RelayCommand(Hypnotize, _ => IsHypnotizeEnabled);
@@ -78,8 +123,18 @@ namespace TrainMe.ViewModels {
             ExitCommand = new RelayCommand(Exit);
             MinimizeCommand = new RelayCommand(Minimize);
 
+            // Subscribe to media error events
+            App.VideoService.MediaErrorOccurred += VideoService_MediaErrorOccurred;
+
             UpdateButtons();
-            LoadSession();
+            
+            // Load session if auto-load is enabled (async to avoid blocking UI)
+            if (App.Settings.AutoLoadSession) {
+                _ = LoadSessionAsync(_cancellationTokenSource.Token);
+            }
+            
+            // Subscribe to display settings changes to invalidate screen cache
+            SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
             
             _saveTimer = new System.Windows.Threading.DispatcherTimer();
             _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
@@ -90,18 +145,39 @@ namespace TrainMe.ViewModels {
             
             AddedFiles.CollectionChanged += (s, e) => {
                 if (e.NewItems != null) {
-                    foreach (VideoItem item in e.NewItems) item.PropertyChanged += VideoItem_PropertyChanged;
+                    foreach (VideoItem item in e.NewItems) {
+                        item.PropertyChanged += VideoItem_PropertyChanged;
+                        // Track assignment status incrementally
+                        if (item.AssignedScreen == null) _allFilesAssigned = false;
+                    }
                 }
                 if (e.OldItems != null) {
                     foreach (VideoItem item in e.OldItems) item.PropertyChanged -= VideoItem_PropertyChanged;
                 }
+                // Recalculate assignment status when collection changes
+                UpdateAllFilesAssigned();
             };
             foreach (var item in AddedFiles) item.PropertyChanged += VideoItem_PropertyChanged;
+            UpdateAllFilesAssigned();
+        }
+
+        [SupportedOSPlatform("windows")]
+        private void SystemEvents_DisplaySettingsChanged(object sender, EventArgs e) {
+            // Invalidate screen cache when display settings change
+            InvalidateScreenCache();
+            // Refresh screens on UI thread
+            Application.Current?.Dispatcher.InvokeAsync(() => {
+                RefreshScreens();
+            });
         }
 
         private void VideoItem_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e) {
             if (e.PropertyName == nameof(VideoItem.Opacity) || e.PropertyName == nameof(VideoItem.Volume) || e.PropertyName == nameof(VideoItem.AssignedScreen)) {
                 TriggerDebouncedSave();
+                // Update assignment status when AssignedScreen changes
+                if (e.PropertyName == nameof(VideoItem.AssignedScreen)) {
+                    UpdateAllFilesAssigned();
+                }
             }
         }
 
@@ -122,47 +198,73 @@ namespace TrainMe.ViewModels {
             }
         }
 
+        private List<ScreenViewer> _cachedScreens;
+        private DateTime _screensCacheTime = DateTime.MinValue;
+        private static readonly TimeSpan ScreenCacheTimeout = TimeSpan.FromSeconds(5);
+
+        [SupportedOSPlatform("windows")]
         private void RefreshScreens() {
-            try {
+            // Use cached screens if available and recent
+            if (_cachedScreens != null && DateTime.Now - _screensCacheTime < ScreenCacheTimeout) {
                 AvailableScreens.Clear();
-                foreach (var s in WindowServices.GetAllScreenViewers()) {
+                foreach (var s in _cachedScreens) {
+                    AvailableScreens.Add(s);
+                }
+                return;
+            }
+
+            try {
+                var screens = WindowServices.GetAllScreenViewers();
+                _cachedScreens = screens;
+                _screensCacheTime = DateTime.Now;
+                
+                AvailableScreens.Clear();
+                foreach (var s in screens) {
                     AvailableScreens.Add(s);
                 }
                 
                 // Ensure we have at least one screen
                 if (AvailableScreens.Count == 0) {
-                    MessageBox.Show("Warning: No screens detected. Using default screen.", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Logger.Warning("No screens detected, using default screen");
+                    SetStatusMessage("Warning: No screens detected. Using default screen.", StatusMessageType.Warning);
                     // Add a default screen
                     var defaultScreen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens.FirstOrDefault();
                     if (defaultScreen != null) {
-                        AvailableScreens.Add(new ScreenViewer(defaultScreen));
+                        var defaultViewer = new ScreenViewer(defaultScreen);
+                        AvailableScreens.Add(defaultViewer);
+                        _cachedScreens = new List<ScreenViewer> { defaultViewer };
                     }
                 }
             } catch (Exception ex) {
-                MessageBox.Show($"Error refreshing screens: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.Error("Error refreshing screens", ex);
+                SetStatusMessage($"Error refreshing screens: {ex.Message}", StatusMessageType.Error);
                 // Add a fallback screen
                 try {
                     var fallbackScreen = System.Windows.Forms.Screen.PrimaryScreen;
                     if (fallbackScreen != null) {
-                        AvailableScreens.Add(new ScreenViewer(fallbackScreen));
+                        var fallbackViewer = new ScreenViewer(fallbackScreen);
+                        AvailableScreens.Add(fallbackViewer);
+                        _cachedScreens = new List<ScreenViewer> { fallbackViewer };
                     }
-                } catch {
-                    // Last resort - continue without screens
+                } catch (Exception ex2) {
+                    Logger.Error("Failed to add fallback screen", ex2);
                 }
             }
         }
 
-        private void UpdateButtons() {
-            bool hasFiles = AddedFiles.Count > 0;
-            bool allAssigned = AllFilesAssigned();
-            IsHypnotizeEnabled = hasFiles && allAssigned;
+        public void InvalidateScreenCache() {
+            _cachedScreens = null;
+            _screensCacheTime = DateTime.MinValue;
         }
 
-        private bool AllFilesAssigned() {
-            foreach (var f in AddedFiles) {
-                if (f.AssignedScreen == null) return false;
-            }
-            return true;
+        private void UpdateButtons() {
+            bool hasFiles = AddedFiles.Count > 0;
+            IsHypnotizeEnabled = hasFiles && _allFilesAssigned;
+        }
+
+        private void UpdateAllFilesAssigned() {
+            _allFilesAssigned = AddedFiles.Count > 0 && AddedFiles.All(f => f.AssignedScreen != null);
+            UpdateButtons();
         }
 
         private void Hypnotize(object parameter) {
@@ -188,7 +290,15 @@ namespace TrainMe.ViewModels {
             // Simple validation again just in case
             if (selectedFiles.Any(x => x.AssignedScreen == null)) return null;
 
-            if (Shuffle) selectedFiles = selectedFiles.OrderBy(a => random.Next()).ToList();
+            if (Shuffle) {
+                // Fisher-Yates shuffle - O(n) instead of O(n log n)
+                for (int i = selectedFiles.Count - 1; i > 0; i--) {
+                    int j = random.Next(i + 1);
+                    var temp = selectedFiles[i];
+                    selectedFiles[i] = selectedFiles[j];
+                    selectedFiles[j] = temp;
+                }
+            }
 
             var assignments = new Dictionary<ScreenViewer, IEnumerable<VideoItem>>();
             foreach (var f in selectedFiles) {
@@ -219,25 +329,122 @@ namespace TrainMe.ViewModels {
         }
 
         private void Browse(object obj) {
+            // Safely execute async code from void command handler
+            // This pattern ensures exceptions are properly caught and handled
+            _ = BrowseAsync().ContinueWith(task => {
+                if (task.IsFaulted) {
+                    var ex = task.Exception?.GetBaseException() ?? task.Exception;
+                    Logger.Error("Error in Browse operation", ex);
+                    Application.Current?.Dispatcher.InvokeAsync(() => {
+                        SetStatusMessage($"Error browsing files: {ex?.Message ?? "Unknown error"}", StatusMessageType.Error);
+                    });
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private async Task BrowseAsync() {
             var dlg = new OpenFileDialog {
                 Multiselect = true,
-                Filter = "Video Files|*.mp4;*.mkv;*.avi;*.mov;*.wmv|All Files|*.*"
+                Filter = $"Video Files|{string.Join(";", Constants.VideoExtensions.Select(e => $"*{e}"))}|All Files|*.*"
             };
             if (dlg.ShowDialog() == true) {
+                await AddFilesAsync(dlg.FileNames, _cancellationTokenSource.Token);
+            }
+        }
+
+        private async System.Threading.Tasks.Task AddFilesAsync(string[] filePaths, CancellationToken cancellationToken = default) {
+            IsLoading = true;
+            SetStatusMessage("Validating files...", StatusMessageType.Info);
+            
+            try {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 // Ensure screens are up to date
                 if (AvailableScreens.Count == 0) RefreshScreens();
                 var primary = AvailableScreens.FirstOrDefault(v => v.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
                 
-                foreach (var f in dlg.FileNames) {
-                    if (!AddedFiles.Any(x => x.FilePath == f)) {
-                        var item = new VideoItem(f, primary);
-                        item.Opacity = 0.9;
-                        item.Volume = 0.5;
-                        AddedFiles.Add(item);
-                    }
+                // Use HashSet for O(1) lookups instead of O(n) Any() checks
+                var existingPaths = new HashSet<string>(AddedFiles.Select(x => x.FilePath), StringComparer.OrdinalIgnoreCase);
+                
+                // Validate files in parallel
+                var validationTasks = filePaths.Select(filePath => Task.Run(() => {
+                    cancellationToken.ThrowIfCancellationRequested();
+                if (existingPaths.Contains(filePath)) {
+                    return (filePath, isValid: false, errorMessage: "File already in playlist");
                 }
+                
+                if (!FileValidator.ValidateVideoFile(filePath, out string errorMessage)) {
+                    return (filePath, isValid: false, errorMessage);
+                }
+                
+                // Check file size and warn if large
+                if (FileValidator.ValidateFileSize(filePath, out long size, out bool warning)) {
+                    if (warning) {
+                        Logger.Info($"Large file detected: {System.IO.Path.GetFileName(filePath)} ({size / (1024.0 * 1024 * 1024):F2} GB)");
+                    }
+                    return (filePath, isValid: true, errorMessage: (string)null);
+                } else {
+                    return (filePath, isValid: false, errorMessage: "File size exceeds maximum limit");
+                }
+                }, cancellationToken)).ToArray();
+            
+                cancellationToken.ThrowIfCancellationRequested();
+            var results = await System.Threading.Tasks.Task.WhenAll(validationTasks);
+            
+                cancellationToken.ThrowIfCancellationRequested();
+            var settings = App.Settings;
+            int addedCount = 0;
+            int skippedCount = 0;
+            
+            var failedFiles = new List<(string name, string error)>();
+            
+            foreach (var (filePath, isValid, errorMessage) in results) {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (isValid) {
+                    var sanitizedPath = FileValidator.SanitizePath(filePath);
+                    if (sanitizedPath != null) {
+                        var item = new VideoItem(sanitizedPath, primary);
+                        item.Opacity = settings.DefaultOpacity;
+                        item.Volume = settings.DefaultVolume;
+                        // Validate the file to set its validation status
+                        item.Validate();
+                        AddedFiles.Add(item);
+                        existingPaths.Add(sanitizedPath);
+                        addedCount++;
+                    } else {
+                        Logger.Warning($"Failed to sanitize path: {filePath}");
+                        failedFiles.Add((System.IO.Path.GetFileName(filePath), "Invalid file path"));
+                        skippedCount++;
+                    }
+                } else {
+                    Logger.Warning($"Skipped file {filePath}: {errorMessage}");
+                    failedFiles.Add((System.IO.Path.GetFileName(filePath), errorMessage));
+                    skippedCount++;
+                }
+            }
+            
+            if (skippedCount > 0) {
+                var message = $"Added {addedCount} file(s), skipped {skippedCount} invalid file(s)";
+                if (failedFiles.Count <= 5) {
+                    message += ":\n" + string.Join("\n", failedFiles.Select(f => $"• {f.name} - {f.error}"));
+                } else {
+                    message += ":\n" + string.Join("\n", failedFiles.Take(5).Select(f => $"• {f.name} - {f.error}")) + $"\n... and {failedFiles.Count - 5} more";
+                }
+                SetStatusMessage(message, StatusMessageType.Warning);
+            } else {
+                SetStatusMessage($"Added {addedCount} file(s)", StatusMessageType.Success);
+            }
+            
                 UpdateButtons();
                 SaveSession();
+            } catch (OperationCanceledException) {
+                SetStatusMessage("Operation cancelled", StatusMessageType.Warning);
+                Logger.Info("Add files operation was cancelled");
+            } catch (Exception ex) {
+                Logger.Error("Error adding files", ex);
+                SetStatusMessage($"Error adding files: {ex.Message}", StatusMessageType.Error);
+            } finally {
+                IsLoading = false;
             }
         }
         
@@ -273,22 +480,29 @@ namespace TrainMe.ViewModels {
 
         // Method to handle Drag & Drop from View
         public void AddDroppedFiles(string[] files) {
-             if (AvailableScreens.Count == 0) RefreshScreens();
-             var primary = AvailableScreens.FirstOrDefault(v => v.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
+            // Safely execute async code from void method
+            // This pattern ensures exceptions are properly caught and handled
+            _ = AddDroppedFilesAsync(files).ContinueWith(task => {
+                if (task.IsFaulted) {
+                    var ex = task.Exception?.GetBaseException() ?? task.Exception;
+                    Logger.Error("Error in AddDroppedFiles operation", ex);
+                    Application.Current?.Dispatcher.InvokeAsync(() => {
+                        SetStatusMessage($"Error adding dropped files: {ex?.Message ?? "Unknown error"}", StatusMessageType.Error);
+                    });
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
 
-             foreach (var f in files) {
-                 var ext = System.IO.Path.GetExtension(f)?.ToLowerInvariant();
-                 if (ext == ".mp4" || ext == ".mkv" || ext == ".avi" || ext == ".mov" || ext == ".wmv") {
-                     if (!AddedFiles.Any(x => x.FilePath == f)) {
-                         var item = new VideoItem(f, primary);
-                         item.Opacity = 0.9;
-                         item.Volume = 0.5;
-                         AddedFiles.Add(item);
-                     }
-                 }
-             }
-             UpdateButtons();
-             SaveSession();
+        private async Task AddDroppedFilesAsync(string[] files) {
+            // Filter to only video files
+            var videoFiles = files.Where(f => {
+                var ext = System.IO.Path.GetExtension(f)?.ToLowerInvariant();
+                return Constants.VideoExtensions.Contains(ext);
+            }).ToArray();
+            
+            if (videoFiles.Length > 0) {
+                await AddFilesAsync(videoFiles, _cancellationTokenSource.Token);
+            }
         }
 
         public void MoveVideoItem(VideoItem item, int newIndex) {
@@ -326,26 +540,98 @@ namespace TrainMe.ViewModels {
                 Filter = "TrainMe Playlist|*.json"
             };
             if (dlg.ShowDialog() == true) {
-                try {
-                    var json = System.IO.File.ReadAllText(dlg.FileName);
-                    var playlist = System.Text.Json.JsonSerializer.Deserialize<Playlist>(json);
-                    
-                    if (playlist != null) {
+                _ = LoadPlaylistAsync(dlg.FileName).ContinueWith(task => {
+                    if (task.IsFaulted) {
+                        var ex = task.Exception?.GetBaseException() ?? task.Exception;
+                        Logger.Error("Error loading playlist", ex);
+                        Application.Current?.Dispatcher.InvokeAsync(() => {
+                            SetStatusMessage($"Failed to load playlist: {ex?.Message ?? "Unknown error"}", StatusMessageType.Error);
+                        });
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+
+        private async Task LoadPlaylistAsync(string fileName) {
+            IsLoading = true;
+            SetStatusMessage("Loading playlist...", StatusMessageType.Info);
+            
+            try {
+                var json = await System.IO.File.ReadAllTextAsync(fileName);
+                var playlist = System.Text.Json.JsonSerializer.Deserialize<Playlist>(json);
+                
+                if (playlist != null) {
+                    await Application.Current.Dispatcher.InvokeAsync(() => {
                         AddedFiles.Clear();
                         if (AvailableScreens.Count == 0) RefreshScreens();
-                        
-                        foreach (var item in playlist.Items) {
+                    });
+                    
+                    var validItems = new List<VideoItem>();
+                    var missingFiles = new List<string>();
+                    var invalidFiles = new List<(string path, string error)>();
+                    
+                    foreach (var item in playlist.Items) {
+                        await Application.Current.Dispatcher.InvokeAsync(() => {
                             var screen = AvailableScreens.FirstOrDefault(s => s.DeviceName == item.ScreenDeviceName) ?? AvailableScreens.FirstOrDefault();
                             var videoItem = new VideoItem(item.FilePath, screen);
                             videoItem.Opacity = item.Opacity;
                             videoItem.Volume = item.Volume;
+                            
+                            // Validate the file
+                            videoItem.Validate();
+                            
+                            if (videoItem.ValidationStatus == FileValidationStatus.Valid) {
+                                validItems.Add(videoItem);
+                            } else if (videoItem.ValidationStatus == FileValidationStatus.Missing) {
+                                missingFiles.Add(System.IO.Path.GetFileName(videoItem.FilePath));
+                            } else {
+                                invalidFiles.Add((System.IO.Path.GetFileName(videoItem.FilePath), videoItem.ValidationError ?? "Invalid file"));
+                            }
+                            
+                            // Always add to collection so user can see all files, including invalid ones
                             AddedFiles.Add(videoItem);
-                        }
-                        UpdateButtons();
+                        });
                     }
-                } catch (Exception ex) {
-                    MessageBox.Show($"Failed to load playlist: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    
+                    await Application.Current.Dispatcher.InvokeAsync(() => {
+                        UpdateButtons();
+                        
+                        // Show summary message
+                        if (missingFiles.Count > 0 || invalidFiles.Count > 0) {
+                            var messageParts = new List<string> { $"Loaded {validItems.Count} valid file(s)" };
+                            if (missingFiles.Count > 0) {
+                                messageParts.Add($"{missingFiles.Count} missing");
+                            }
+                            if (invalidFiles.Count > 0) {
+                                messageParts.Add($"{invalidFiles.Count} invalid");
+                            }
+                            
+                            var fileList = new List<string>();
+                            fileList.AddRange(missingFiles);
+                            fileList.AddRange(invalidFiles.Select(f => $"{f.path} ({f.error})"));
+                            
+                            var message = string.Join(", ", messageParts) + ".";
+                            if (fileList.Count <= 5) {
+                                message += "\n" + string.Join("\n", fileList);
+                            } else {
+                                message += $"\n{string.Join("\n", fileList.Take(5))}\n... and {fileList.Count - 5} more";
+                            }
+                            
+                            SetStatusMessage(message, StatusMessageType.Warning);
+                        } else {
+                            SetStatusMessage($"Loaded {validItems.Count} file(s) from playlist", StatusMessageType.Success);
+                        }
+                    });
                 }
+            } catch (Exception ex) {
+                Logger.Error("Error loading playlist", ex);
+                await Application.Current.Dispatcher.InvokeAsync(() => {
+                    SetStatusMessage($"Failed to load playlist: {ex.Message}", StatusMessageType.Error);
+                });
+            } finally {
+                await Application.Current.Dispatcher.InvokeAsync(() => {
+                    IsLoading = false;
+                });
             }
         }
         private void SaveSession() {
@@ -363,33 +649,78 @@ namespace TrainMe.ViewModels {
                         var json = System.Text.Json.JsonSerializer.Serialize(playlist);
                         var path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "session.json");
                         System.IO.File.WriteAllText(path, json);
-                    } catch { /* Background save failed */ }
+                    } catch (Exception ex) {
+                        Logger.Error("Failed to save session in background", ex);
+                    }
                 });
-            } catch { /* Snapshot creation failed */ }
+            } catch (Exception ex) {
+                Logger.Error("Failed to create session snapshot", ex);
+            }
         }
 
-        private void LoadSession() {
+        private async Task LoadSessionAsync(CancellationToken cancellationToken = default) {
             try {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "session.json");
                 if (!System.IO.File.Exists(path)) return;
 
-                var json = System.IO.File.ReadAllText(path);
+                // Read file asynchronously to avoid blocking UI thread
+                var json = await System.IO.File.ReadAllTextAsync(path, cancellationToken);
+                
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var playlist = System.Text.Json.JsonSerializer.Deserialize<Playlist>(json);
                 
                 if (playlist != null) {
-                    AddedFiles.Clear();
-                    if (AvailableScreens.Count == 0) RefreshScreens();
-                    
-                    foreach (var item in playlist.Items) {
-                        var screen = AvailableScreens.FirstOrDefault(s => s.DeviceName == item.ScreenDeviceName) ?? AvailableScreens.FirstOrDefault(s => s.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
-                        var videoItem = new VideoItem(item.FilePath, screen);
-                        videoItem.Opacity = item.Opacity;
-                        videoItem.Volume = item.Volume;
-                        AddedFiles.Add(videoItem);
-                    }
-                    UpdateButtons();
+                    // Dispatch UI updates back to UI thread
+                    await Application.Current.Dispatcher.InvokeAsync(() => {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        
+                        AddedFiles.Clear();
+                        if (AvailableScreens.Count == 0) RefreshScreens();
+                        
+                        foreach (var item in playlist.Items) {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            
+                            var screen = AvailableScreens.FirstOrDefault(s => s.DeviceName == item.ScreenDeviceName) ?? AvailableScreens.FirstOrDefault(s => s.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
+                            var videoItem = new VideoItem(item.FilePath, screen);
+                            videoItem.Opacity = item.Opacity;
+                            videoItem.Volume = item.Volume;
+                            // Validate the file when loading from session
+                            videoItem.Validate();
+                            AddedFiles.Add(videoItem);
+                        }
+                        UpdateButtons();
+                    }, System.Windows.Threading.DispatcherPriority.Normal, cancellationToken);
                 }
-            } catch { /* Ignore load errors */ }
+            } catch (OperationCanceledException) {
+                Logger.Info("Load session operation was cancelled");
+            } catch (Exception ex) {
+                Logger.Warning("Failed to load session", ex);
+            }
+        }
+
+        private bool _disposed = false;
+
+        private void VideoService_MediaErrorOccurred(object sender, string errorMessage) {
+            Application.Current?.Dispatcher.InvokeAsync(() => {
+                SetStatusMessage(errorMessage, StatusMessageType.Error);
+            });
+        }
+
+        /// <summary>
+        /// Disposes resources and unsubscribes from events
+        /// </summary>
+        public void Dispose() {
+            if (!_disposed) {
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                SystemEvents.DisplaySettingsChanged -= SystemEvents_DisplaySettingsChanged;
+                App.VideoService.MediaErrorOccurred -= VideoService_MediaErrorOccurred;
+                _saveTimer?.Stop();
+                _disposed = true;
+            }
         }
     }
 }

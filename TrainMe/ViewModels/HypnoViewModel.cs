@@ -40,12 +40,15 @@ namespace TrainMe.ViewModels {
         public event EventHandler RequestPlay;
         public event EventHandler RequestPause;
         public event EventHandler RequestStop;
+        public event EventHandler RequestStopBeforeSourceChange;
+        public event EventHandler<MediaErrorEventArgs> MediaErrorOccurred;
 
         public HypnoViewModel() {
         }
 
         public void SetQueue(IEnumerable<VideoItem> files) {
-            _files = files?.ToArray() ?? new VideoItem[0];
+            // Materialize to array for indexed access - this is necessary for PlayNext() logic
+            _files = files?.ToArray() ?? Array.Empty<VideoItem>();
             _currentPos = -1;
             PlayNext();
         }
@@ -84,6 +87,10 @@ namespace TrainMe.ViewModels {
             Opacity = _currentItem.Opacity;
             Volume = _currentItem.Volume;
             
+            // Stop the current video before changing source to ensure MediaEnded fires reliably
+            // This fixes an issue where MediaEnded doesn't fire on secondary monitors
+            RequestStopBeforeSourceChange?.Invoke(this, EventArgs.Empty);
+            
             CurrentSource = new Uri(path, UriKind.Absolute);
             RequestPlay?.Invoke(this, EventArgs.Empty);
         }
@@ -102,9 +109,16 @@ namespace TrainMe.ViewModels {
         }
 
         public void OnMediaFailed(Exception ex) {
-            // Log or show error?
-            // For now, just skip to next to avoid getting stuck?
-             PlayNext();
+            var fileName = _currentItem?.FileName ?? "Unknown";
+            var errorMessage = $"Failed to play video: {fileName}";
+            
+            Logger.Error(errorMessage, ex);
+            
+            // Notify listeners (e.g., UI) about the error
+            MediaErrorOccurred?.Invoke(this, new MediaErrorEventArgs($"{errorMessage}. Error: {ex?.Message ?? "Unknown error"}"));
+            
+            // Skip to next video to avoid getting stuck
+            PlayNext();
         }
 
         public void Play() {
@@ -117,6 +131,17 @@ namespace TrainMe.ViewModels {
 
         public void Stop() {
             RequestStop?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Event arguments for media error events
+    /// </summary>
+    public class MediaErrorEventArgs : EventArgs {
+        public string ErrorMessage { get; }
+        
+        public MediaErrorEventArgs(string errorMessage) {
+            ErrorMessage = errorMessage;
         }
     }
 }

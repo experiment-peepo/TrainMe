@@ -43,6 +43,7 @@ namespace TrainMe.Classes {
             return Screen.AllScreens.Length;
         }
 
+        [SupportedOSPlatform("windows")]
         public static List<ScreenViewer> GetAllScreenViewers() {
             List<ScreenViewer> list = new List<ScreenViewer>();
             foreach(Screen screen in GetAllScreens()) {
@@ -51,6 +52,7 @@ namespace TrainMe.Classes {
             return list;
         }
 
+        [SupportedOSPlatform("windows")]
         public static void MoveWindowToScreen(Window window, Screen screen) {
             if (window == null || screen == null) return;
 

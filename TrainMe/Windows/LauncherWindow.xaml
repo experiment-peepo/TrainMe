@@ -15,27 +15,73 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TrainMe.Windows"
         xmlns:vm="clr-namespace:TrainMe.ViewModels"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="TrainMe Launcher" SizeToContent="Height" Width="500"
         ResizeMode="NoResize"
         WindowStyle="None"
         WindowStartupLocation="CenterScreen"
         AllowsTransparency="True" Background="Transparent"
+        Icon="pack://application:,,,/Images/icon.ico"
         >
+    <Window.Resources>
+        <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+        <local:PluralConverter x:Key="PluralConverter"/>
+        <local:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:StatusMessageTypeToBrushConverter x:Key="StatusMessageTypeToBrushConverter"/>
+        <local:StatusMessageTypeToForegroundConverter x:Key="StatusMessageTypeToForegroundConverter"/>
+        <local:ValidationStatusToBrushConverter x:Key="ValidationStatusToBrushConverter"/>
+        <local:ValidationStatusToIconConverter x:Key="ValidationStatusToIconConverter"/>
+        <local:ValidationStatusToOpacityConverter x:Key="ValidationStatusToOpacityConverter"/>
+        <local:ValidationStatusToForegroundConverter x:Key="ValidationStatusToForegroundConverter"/>
+    </Window.Resources>
     <StackPanel Background="#FF301B32">
         <Grid Height="50" FlowDirection="RightToLeft" Background="#FF2D0A30" MouseLeftButtonDown="Grid_MouseLeftButtonDown">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="50"/>
                 <ColumnDefinition Width="50"/>
+                <ColumnDefinition Width="50"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource ControlButton}" Command="{Binding ExitCommand}">x</Button>
-            <Button Style="{StaticResource ControlButton}" Command="{Binding MinimizeCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Grid.Column="1">-</Button>
+            <Button Style="{StaticResource ControlButton}" Command="{Binding ExitCommand}" ToolTip="Exit application">x</Button>
+            <Button Style="{StaticResource ControlButton}" Command="{Binding MinimizeCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Grid.Column="1" ToolTip="Minimize window">-</Button>
+            <Button Style="{StaticResource ControlButton}" Click="SettingsButton_Click" Grid.Column="2" FontSize="14" ToolTip="Open settings">⚙</Button>
         </Grid>
-        <Label>TrainMe by SissyDamsel</Label>
+        <Label>TrainMe</Label>
         <Label Style="{StaticResource LowerTitle}" FontSize="9" FontStyle="Italic">Overlay video player for sissies</Label>
-        <Button x:Name="BrowseButton" Command="{Binding BrowseCommand}" Margin="0,10,0,0">Browse Videos...</Button>
-        <Label Style="{StaticResource LowerTitle}">Training Playlist</Label>
+        <Grid Margin="0,10,0,0">
+            <Button x:Name="BrowseButton" Command="{Binding BrowseCommand}" ToolTip="Browse and add video files to playlist">Browse Videos...</Button>
+            <!-- Progress indicator overlay -->
+            <ProgressBar 
+                Height="4" 
+                VerticalAlignment="Bottom" 
+                Margin="10,0,10,2"
+                IsIndeterminate="True"
+                Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+                Foreground="DeepPink"
+                Background="Transparent"
+                BorderThickness="0"/>
+        </Grid>
+        <Grid Margin="0,0,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Label Style="{StaticResource LowerTitle}" Grid.Column="0">Playlist</Label>
+            <TextBlock Grid.Column="1" 
+                      Foreground="#AAAAAA" 
+                      FontSize="11" 
+                      VerticalAlignment="Center" 
+                      Margin="8,0,0,0"
+                      TextAlignment="Left">
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="({0} {1})">
+                        <Binding Path="AddedFiles.Count"/>
+                        <Binding Path="AddedFiles.Count" Converter="{StaticResource PluralConverter}"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+        </Grid>
         
         <Grid Height="200" Margin="0,5,0,0">
             <Border Background="#FF000000" Opacity="0.2" CornerRadius="5"/>
@@ -48,14 +94,22 @@
                       Drop="AddedFilesList_Drop"
                       PreviewMouseLeftButtonDown="AddedFilesList_PreviewMouseLeftButtonDown"
                       MouseMove="AddedFilesList_MouseMove"
-                      Background="Transparent" BorderThickness="0">
+                      Background="Transparent" BorderThickness="0"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="0,2,0,2"/>
+                        <Setter Property="Margin" Value="0,4,0,4"/>
                         <Setter Property="BorderThickness" Value="0"/>
                         <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="MinHeight" Value="85"/>
                         <Style.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="#33FFFFFF"/>
@@ -68,7 +122,7 @@
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="8,4">
+                        <Border Background="#20FFFFFF" CornerRadius="4" Padding="10,8" BorderBrush="{Binding ValidationStatus, Converter={StaticResource ValidationStatusToBrushConverter}}" BorderThickness="2,2,2,2" Opacity="{Binding ValidationStatus, Converter={StaticResource ValidationStatusToOpacityConverter}}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -76,8 +130,19 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 
-                                <!-- Video Icon -->
-                                <Path Data="M0,0 L10,5 L0,10 Z" Fill="White" VerticalAlignment="Top" Margin="0,5,8,0"/>
+                                <!-- Validation Status Icon -->
+                                <TextBlock Grid.Column="0" Text="{Binding ValidationStatus, Converter={StaticResource ValidationStatusToIconConverter}}" 
+                                          FontSize="16" VerticalAlignment="Top" Margin="0,5,8,0"
+                                          Foreground="{Binding ValidationStatus, Converter={StaticResource ValidationStatusToForegroundConverter}}">
+                                    <TextBlock.ToolTip>
+                                        <ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding FilePath}" FontWeight="Bold"/>
+                                                <TextBlock Text="{Binding ValidationError}" Foreground="Red" Visibility="{Binding ValidationError, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </TextBlock.ToolTip>
+                                </TextBlock>
                                 
                                 <!-- Content Stack -->
                                 <StackPanel Grid.Column="1">
@@ -86,21 +151,34 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding FileName}" Foreground="White" VerticalAlignment="Center" ToolTip="{Binding FilePath}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding FileName}" Foreground="White" VerticalAlignment="Center" 
+                                                  FontWeight="SemiBold" TextTrimming="CharacterEllipsis">
+                                            <TextBlock.ToolTip>
+                                                <ToolTip>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding FilePath}" FontWeight="Bold"/>
+                                                        <TextBlock Text="{Binding ValidationError}" Foreground="Red" Visibility="{Binding ValidationError, Converter={StaticResource StringToVisibilityConverter}}" Margin="0,5,0,0"/>
+                                                    </StackPanel>
+                                                </ToolTip>
+                                            </TextBlock.ToolTip>
+                                        </TextBlock>
                                         
                                         <ComboBox Grid.Column="1" x:Name="AssignCombo" Margin="8,0,0,0" Width="120" VerticalAlignment="Center"
                                                   ItemsSource="{Binding DataContext.AvailableScreens, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                  SelectedItem="{Binding AssignedScreen}" />
+                                                  SelectedItem="{Binding AssignedScreen}"
+                                                  ToolTip="Select screen/monitor to display this video on" />
                                     </Grid>
                                     
-                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                         <TextBlock Text="Op" Foreground="#888" FontSize="9" VerticalAlignment="Center" Width="15"/>
-                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Opacity}" Minimum="0" Maximum="0.95" Margin="0,0,10,0" 
+                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Opacity}" Minimum="0" Maximum="0.95" Margin="0,0,5,0" 
                                                 IsSnapToTickEnabled="True" SmallChange="0.01" LargeChange="0.1" TickFrequency="0.01" ToolTip="Item Opacity"/>
+                                        <TextBlock Text="{Binding Opacity, StringFormat='{}{0:P0}'}" Foreground="#AAAAAA" FontSize="9" VerticalAlignment="Center" MinWidth="30" TextAlignment="Left"/>
                                         
-                                        <TextBlock Text="Vol" Foreground="#888" FontSize="9" VerticalAlignment="Center" Width="15"/>
-                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Volume}" Minimum="0" Maximum="1" Margin="0,0,0,0" 
+                                        <TextBlock Text="Vol" Foreground="#888" FontSize="9" VerticalAlignment="Center" Width="15" Margin="10,0,0,0"/>
+                                        <Slider Style="{StaticResource NeonSliderStyle}" Width="80" Value="{Binding Volume}" Minimum="0" Maximum="1" Margin="0,0,5,0" 
                                                 IsSnapToTickEnabled="True" SmallChange="0.01" LargeChange="0.1" TickFrequency="0.01" ToolTip="Item Volume"/>
+                                        <TextBlock Text="{Binding Volume, StringFormat='{}{0:P0}'}" Foreground="#AAAAAA" FontSize="9" VerticalAlignment="Center" MinWidth="30" TextAlignment="Left"/>
                                     </StackPanel>
                                 </StackPanel>
                                           
@@ -137,31 +215,62 @@
                         </Style.Triggers>
                     </Style>
                 </Grid.Style>
-                <TextBlock Text="Drag &amp; Drop videos here&#x0a;or use Browse button" 
-                           Foreground="#88FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontStyle="Italic"/>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="📁" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" Margin="0,0,0,10"/>
+                    <TextBlock Text="Drag &amp; Drop videos here" 
+                               Foreground="#CCFFFFFF" 
+                               HorizontalAlignment="Center" 
+                               TextAlignment="Center" 
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,5"/>
+                    <TextBlock Text="or click Browse button to add files" 
+                               Foreground="#88FFFFFF" 
+                               HorizontalAlignment="Center" 
+                               TextAlignment="Center" 
+                               FontSize="10"
+                               FontStyle="Italic"/>
+                </StackPanel>
             </Grid>
         </Grid>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5">
-            <Button Command="{Binding SavePlaylistCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10">Save Playlist</Button>
-            <Button Command="{Binding LoadPlaylistCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10">Load Playlist</Button>
-            <Button Command="{Binding ClearAllCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10">Clear Playlist</Button>
+            <Button Command="{Binding SavePlaylistCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10" ToolTip="Save current playlist to a file">Save Playlist</Button>
+            <Button Command="{Binding LoadPlaylistCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10" ToolTip="Load a playlist from a file">Load Playlist</Button>
+            <Button Command="{Binding ClearAllCommand}" Margin="5,0" Foreground="#FFAAAAAA" Background="Transparent" FontSize="10" ToolTip="Remove all videos from playlist">Clear Playlist</Button>
         </StackPanel>
         
         
         
 
+        <!-- Status Message Area -->
+        <Border Background="{Binding StatusMessageType, Converter={StaticResource StatusMessageTypeToBrushConverter}}" 
+                CornerRadius="3" 
+                Margin="10,5" 
+                Padding="8,4" 
+                MinHeight="20" 
+                BorderThickness="1"
+                BorderBrush="{Binding StatusMessageType, Converter={StaticResource StatusMessageTypeToBrushConverter}}"
+                Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}">
+            <TextBlock Text="{Binding StatusMessage}" 
+                      Foreground="{Binding StatusMessageType, Converter={StaticResource StatusMessageTypeToForegroundConverter}}" 
+                      FontSize="10" 
+                      TextAlignment="Center"
+                      TextWrapping="Wrap"
+                      FontWeight="SemiBold"/>
+        </Border>
+        
         <Grid HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Label Style="{StaticResource LowerTitle}">Random shuffle</Label>
-            <CheckBox x:Name="ShuffleCheckBox" IsChecked="{Binding Shuffle}" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"></CheckBox>
+            <CheckBox x:Name="ShuffleCheckBox" IsChecked="{Binding Shuffle}" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" ToolTip="Randomize video playback order"></CheckBox>
         </Grid>
-        <Button x:Name="HypnotizeButton" Command="{Binding HypnotizeCommand}" CommandParameter="{Binding ElementName=AddedFilesList, Path=SelectedItems}" IsEnabled="{Binding IsHypnotizeEnabled}" Content="{Binding HypnotizeButtonText}" />
-        <Button x:Name="PauseButton" Command="{Binding PauseCommand}" IsEnabled="{Binding IsPauseEnabled}" Content="{Binding PauseButtonText}" />
-        <Button x:Name="DehypnotizeButton" Command="{Binding DehypnotizeCommand}" IsEnabled="{Binding IsDehypnotizeEnabled}">End All Training</Button>
+        <Button x:Name="HypnotizeButton" Command="{Binding HypnotizeCommand}" CommandParameter="{Binding ElementName=AddedFilesList, Path=SelectedItems}" IsEnabled="{Binding IsHypnotizeEnabled}" Content="{Binding HypnotizeButtonText}" ToolTip="Start playing videos on assigned screens" />
+        <Button x:Name="PauseButton" Command="{Binding PauseCommand}" IsEnabled="{Binding IsPauseEnabled}" Content="{Binding PauseButtonText}" ToolTip="Pause or resume video playback" />
+        <Button x:Name="DehypnotizeButton" Command="{Binding DehypnotizeCommand}" IsEnabled="{Binding IsDehypnotizeEnabled}" ToolTip="Stop all video playback">End All Training</Button>
     </StackPanel>
 
 </Window>

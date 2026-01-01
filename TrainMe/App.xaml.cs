@@ -10,7 +10,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -32,15 +31,31 @@ namespace TrainMe {
             
             // Add global exception handlers
             this.DispatcherUnhandledException += (s, args) => {
-                MessageBox.Show($"Unhandled exception: {args.Exception.Message}\n\nStack Trace:\n{args.Exception.StackTrace}", 
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Log the full technical details
+                Classes.Logger.Error("Unhandled exception in UI thread", args.Exception);
+                
+                // Show user-friendly message
+                var userMessage = "An unexpected error occurred in the application.\n\n" +
+                                 "The error details have been logged. If this problem persists, " +
+                                 "please check the application logs or contact support.";
+                
+                MessageBox.Show(userMessage, 
+                    "Application Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 args.Handled = true;
             };
             
             AppDomain.CurrentDomain.UnhandledException += (s, args) => {
                 var ex = args.ExceptionObject as Exception;
-                MessageBox.Show($"Fatal exception: {ex?.Message}\n\nStack Trace:\n{ex?.StackTrace}", 
-                    "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                // Log the full technical details
+                Classes.Logger.Error("Fatal unhandled exception", ex);
+                
+                // Show user-friendly message
+                var userMessage = "A critical error occurred and the application needs to close.\n\n" +
+                                 "The error details have been logged. Please check the application logs " +
+                                 "for more information.";
+                
+                MessageBox.Show(userMessage, 
+                    "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
             };
             
             // Register Services

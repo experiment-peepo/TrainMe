@@ -21,6 +21,7 @@
         Background="{x:Null}"
         AllowsTransparency="True"
         Opacity="{Binding Opacity}" 
+        Icon="pack://application:,,,/Images/icon.ico"
         SourceInitialized="Window_SourceInitialized">
     <Grid IsHitTestVisible="False">
         <MediaElement 
