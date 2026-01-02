@@ -186,6 +186,48 @@ namespace TrainMeX.Tests {
             
             Assert.True(eventRaised);
         }
+
+        [Fact]
+        public void Concurrency_PlayPauseStop_ThreadSafety() {
+            var viewModel = new HypnoViewModel();
+            var exceptions = new System.Collections.Concurrent.ConcurrentBag<Exception>();
+            
+            var threads = new List<System.Threading.Thread>();
+            bool running = true;
+            object lockObj = new object();
+
+            // Simulate multiple threads interacting with the VM
+            for (int i = 0; i < 10; i++) {
+                var t = new System.Threading.Thread(() => {
+                    try {
+                        while (running) {
+                            lock (lockObj) {
+                                if (!running) break;
+                            }
+                            viewModel.Play();
+                            viewModel.Pause();
+                            viewModel.Stop();
+                            System.Threading.Thread.Sleep(1);
+                        }
+                    } catch (Exception ex) {
+                        exceptions.Add(ex);
+                    }
+                });
+                threads.Add(t);
+                t.Start();
+            }
+
+            System.Threading.Thread.Sleep(500);
+            lock (lockObj) {
+                running = false;
+            }
+            
+            foreach (var t in threads) {
+                t.Join(500);
+            }
+
+            Assert.Empty(exceptions);
+        }
     }
 }
 

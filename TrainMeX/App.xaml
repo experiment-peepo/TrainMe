@@ -16,6 +16,13 @@
     StartupUri="Windows/LauncherWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <Style TargetType="Control" x:Key="BaseStyle">
+                <Setter Property="FontFamily" Value="Segoe UI, Roboto, Helvetica, Arial, sans-serif"/>
+            </Style>
+            <Style TargetType="Control" BasedOn="{StaticResource BaseStyle}"/>
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Segoe UI, Roboto, Helvetica, Arial, sans-serif"/>
+            </Style>
             <!-- Color Resources - HotPink & LightPink Theme -->
             <SolidColorBrush x:Key="BackgroundPrimary" Color="#2D0F1A"/> <!-- Dark pink base -->
             <SolidColorBrush x:Key="BackgroundSecondary" Color="#3D1F2E"/> <!-- HotPink-tinted panels -->
@@ -27,9 +34,27 @@
             <SolidColorBrush x:Key="TextSecondary" Color="#FFE4E9"/> <!-- Light pink tinted for better readability -->
             <SolidColorBrush x:Key="TextTertiary" Color="#FFD0D9"/> <!-- Lighter pink for tertiary text -->
             <SolidColorBrush x:Key="BorderPink" Color="#FF69B4"/> <!-- HotPink border -->
+            <SolidColorBrush x:Key="ScrollbarThumb" Color="#44FF69B4"/> <!-- Translucent pink thumb -->
+            <SolidColorBrush x:Key="ScrollbarThumbHover" Color="#AAFF69B4"/> <!-- Brighter pink thumb -->
             <SolidColorBrush x:Key="SuccessColor" Color="#90EE90"/>
             <SolidColorBrush x:Key="WarningColor" Color="#FFD700"/>
             <SolidColorBrush x:Key="ErrorColor" Color="#F44336"/> <!-- Red for danger actions -->
+
+            <!-- Animations -->
+            <Storyboard x:Key="PulsingGlowStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.Opacity)"
+                                 From="0.4" To="0.8" Duration="0:0:1.5">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseInOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation Storyboard.TargetProperty="(UIElement.Effect).(DropShadowEffect.BlurRadius)"
+                                 From="10" To="20" Duration="0:0:1.5">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseInOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
             
             <Style TargetType="Label" x:Key="MainTitle">
                 <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
@@ -45,8 +70,9 @@
             <Style TargetType="Label" BasedOn="{StaticResource MainTitle}"/>
             <Style x:Key="LowerTitle" TargetType="Label" BasedOn="{StaticResource MainTitle}">
                 <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="FontWeight" Value="Normal"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Effect" Value="{x:Null}"/>
             </Style>
             <Style TargetType="Button" x:Key="MainButton">
                 <Setter Property="BorderThickness" Value="0"/>
@@ -102,6 +128,7 @@
                 </Style.Triggers>
             </Style>
             <Style TargetType="Button" BasedOn="{StaticResource MainButton}"></Style>
+
             <Style x:Key="ControlButton" TargetType="Button" BasedOn="{StaticResource MainButton}">
                 <Setter Property="FontSize" Value="18"></Setter>
                 <Setter Property="Padding" Value="0"></Setter>
@@ -154,16 +181,63 @@
             
             <Style x:Key="SettingsCheckBoxStyle" TargetType="CheckBox">
                 <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Margin" Value="0,2"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
                     </Trigger>
                     <Trigger Property="IsChecked" Value="True">
                         <Setter Property="Foreground" Value="{StaticResource AccentPrimary}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+
+            <!-- Global TextBox Style -->
+            <Style x:Key="PinkTextBoxStyle" TargetType="TextBox">
+                <Setter Property="Background" Value="{StaticResource BackgroundSecondary}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource BorderPink}"/>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="Padding" Value="10,8"/>
+                <Setter Property="CaretBrush" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="SelectionBrush" Value="{StaticResource AccentPrimary}"/>
+                <Setter Property="SelectionOpacity" Value="0.4"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border x:Name="border" 
+                                    Background="{TemplateBinding Background}" 
+                                    BorderBrush="{TemplateBinding BorderBrush}" 
+                                    BorderThickness="{TemplateBinding BorderThickness}" 
+                                    CornerRadius="4"
+                                    SnapsToDevicePixels="True">
+                                <ScrollViewer x:Name="PART_ContentHost" Focusable="false" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="true">
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                                    <Setter TargetName="border" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#FF69B4" BlurRadius="8" ShadowDepth="0" Opacity="0.4"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsFocused" Value="true">
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentSecondary}"/>
+                                    <Setter TargetName="border" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#FF69B4" BlurRadius="12" ShadowDepth="0" Opacity="0.6"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
             
             <!-- ComboBox Style with Pink Border -->
@@ -405,6 +479,100 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <!-- Custom Neon Scrollbar Style -->
+            <Style x:Key="NeonScrollbar" TargetType="ScrollBar">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Width" Value="6"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid x:Name="Bg" Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
+                                <Track x:Name="PART_Track" IsDirectionReversed="true" IsEnabled="{TemplateBinding IsMouseOver}">
+                                    <Track.Thumb>
+                                        <Thumb x:Name="Thumb">
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border x:Name="ThumbVisual" 
+                                                            Background="{StaticResource ScrollbarThumb}" 
+                                                            CornerRadius="3"
+                                                            Margin="1,0"/>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="true">
+                                                            <Setter TargetName="ThumbVisual" Property="Background" Value="{StaticResource ScrollbarThumbHover}"/>
+                                                            <Setter TargetName="ThumbVisual" Property="Margin" Value="0,0"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="ScrollViewer">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollViewer">
+                            <Grid x:Name="Grid" Background="{TemplateBinding Background}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" 
+                                                      CanContentScroll="{TemplateBinding CanContentScroll}" 
+                                                      CanHorizontallyScroll="False" 
+                                                      CanVerticallyScroll="False" 
+                                                      Content="{TemplateBinding Content}" 
+                                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                      Grid.Column="0" 
+                                                      Grid.Row="0" 
+                                                      Margin="{TemplateBinding Padding}" 
+                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                <ScrollBar x:Name="PART_VerticalScrollBar" 
+                                         AutomationProperties.AutomationId="VerticalScrollBar" 
+                                         Cursor="Arrow" 
+                                         Grid.Column="1" 
+                                         Maximum="{TemplateBinding ScrollableHeight}" 
+                                         Minimum="0" 
+                                         Grid.Row="0" 
+                                         Style="{StaticResource NeonScrollbar}"
+                                         Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" 
+                                         Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                                         ViewportSize="{TemplateBinding ViewportHeight}"/>
+                                <ScrollBar x:Name="PART_HorizontalScrollBar" 
+                                         AutomationProperties.AutomationId="HorizontalScrollBar" 
+                                         Cursor="Arrow" 
+                                         Grid.Column="0" 
+                                         Maximum="{TemplateBinding ScrollableWidth}" 
+                                         Minimum="0" 
+                                         Orientation="Horizontal" 
+                                         Grid.Row="1" 
+                                         Style="{StaticResource NeonScrollbar}"
+                                         Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" 
+                                         Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                                         ViewportSize="{TemplateBinding ViewportWidth}"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PinkSeparator" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource BorderPink}"/>
+                <Setter Property="Opacity" Value="0.3"/>
+                <Setter Property="Height" Value="1"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

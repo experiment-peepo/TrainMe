@@ -28,18 +28,43 @@
         <local:OpacityToIntConverter x:Key="OpacityToIntConverter"/>
         <local:OpacityScaleConverter x:Key="OpacityScaleConverter"/>
     </Window.Resources>
-    <StackPanel Background="{StaticResource BackgroundPrimary}">
-        <Grid Height="50" FlowDirection="RightToLeft" Background="{StaticResource BackgroundSecondary}" MouseLeftButtonDown="Grid_MouseLeftButtonDown">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="50"/>
-                <ColumnDefinition/>
-            </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource ControlButton}" Click="CloseButton_Click" ToolTip="Close settings">x</Button>
-            <Label Grid.Column="1" Style="{StaticResource LowerTitle}" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center">Settings</Label>
-        </Grid>
-        
-        <StackPanel Margin="20">
-            <Label Style="{StaticResource LowerTitle}" FontSize="20" Margin="0,8,0,20" FontWeight="Bold">General Settings</Label>
+    <Border x:Name="MainBorder" 
+            Background="{StaticResource BackgroundPrimary}" 
+            BorderBrush="{StaticResource AccentPrimary}" 
+            BorderThickness="1"
+            CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header with gradient and rounded corners -->
+            <Border x:Name="HeaderBorder" CornerRadius="8,8,0,0" 
+                    Height="50"
+                    Grid.Row="0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#4D2F3F" Offset="0"/>
+                        <GradientStop Color="#3D1F2E" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid FlowDirection="RightToLeft" MouseLeftButtonDown="Grid_MouseLeftButtonDown">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="50"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button Style="{StaticResource ControlButton}" Click="CloseButton_Click" ToolTip="Close settings">x</Button>
+                    <Label Grid.Column="1" Style="{StaticResource LowerTitle}" 
+                           HorizontalAlignment="Left" 
+                           Margin="10,0,0,0" 
+                           VerticalAlignment="Center">Settings</Label>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="20">
+            <Label Style="{StaticResource LowerTitle}" HorizontalAlignment="Left" FontSize="18" Margin="0,0,0,15">General Settings</Label>
             
             <!-- Default Opacity -->
             <StackPanel Margin="0,0,0,15">
@@ -104,7 +129,7 @@
             </StackPanel>
             
             <!-- Separator -->
-            <Border Background="{StaticResource TextTertiary}" Opacity="0.3" Height="1" Margin="0,8,0,20"/>
+            <Border Style="{StaticResource PinkSeparator}" Margin="0,8,0,20"/>
             
             <!-- Auto Load Session -->
             <Grid Margin="0,0,0,12">
@@ -199,7 +224,7 @@
             </StackPanel>
             
             <!-- Separator -->
-            <Border Background="{StaticResource TextTertiary}" Opacity="0.3" Height="1" Margin="0,10,0,20"/>
+            <Border Style="{StaticResource PinkSeparator}" Margin="0,10,0,20"/>
             
             <!-- OK/Cancel Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,10">
@@ -219,6 +244,8 @@
                     Save
                 </Button>
             </StackPanel>
-        </StackPanel>
-    </StackPanel>
+            </StackPanel>
+    </ScrollViewer>
+    </Grid>
+    </Border>
 </Window>

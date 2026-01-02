@@ -1,0 +1,100 @@
+﻿dotnet : Unhandled 
+exception. System.Wind
+ows.Markup.XamlParseEx
+ception: 'Set 
+property 'System.Windo
+ws.ResourceDictionary.
+DeferrableContent' 
+threw an exception.' 
+Line number '18' and 
+line position '10'.
+At line:1 char:1
++ dotnet run 
+--project TrainMeX\Tra
+inMeX.csproj > 
+run_output.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo    
+          : 
+NotSpecified: 
+(Unhandl    ed 
+excep... position '10 
+   '.:String) [], 
+RemoteExc    eption
+    + 
+FullyQualifiedErrorId 
+    : 
+NativeCommandError
+ 
+ ---> System.ArgumentE
+xception: Item has 
+already been added. 
+Key in dictionary: 
+'NeonScrollbar'  Key 
+being added: 
+'NeonScrollbar'
+   at System.Collectio
+ns.Hashtable.Insert(Ob
+ject key, Object 
+nvalue, Boolean add)
+   at System.Windows.R
+esourceDictionary.SetK
+eys(IList`1 
+keyCollection, 
+IServiceProvider 
+serviceProvider)
+   at MS.Internal.Xaml
+.Runtime.ClrObjectRunt
+ime.SetValue(Object 
+inst, XamlMember 
+property, Object 
+value)
+   --- End of inner 
+exception stack trace 
+---
+   at System.Windows.M
+arkup.XamlReader.Rewra
+pException(Exception 
+e, IXamlLineInfo 
+lineInfo, Uri baseUri)
+   at System.Windows.M
+arkup.WpfXamlLoader.Lo
+ad(XamlReader 
+xamlReader, IXamlObjec
+tWriterFactory 
+writerFactory, 
+Boolean skipJournaledP
+roperties, Object 
+rootObject, XamlObject
+WriterSettings 
+settings, Uri baseUri)
+   at System.Windows.M
+arkup.WpfXamlLoader.Lo
+adBaml(XamlReader 
+xamlReader, Boolean sk
+ipJournaledProperties,
+ Object rootObject, 
+XamlAccessLevel 
+accessLevel, Uri 
+baseUri)
+   at System.Windows.M
+arkup.XamlReader.LoadB
+aml(Stream stream, 
+ParserContext 
+parserContext, Object 
+parent, Boolean 
+closeStream)
+   at System.Windows.A
+pplication.LoadCompone
+nt(Object component, 
+Uri resourceLocator)
+   at TrainMeX.App.Ini
+tializeComponent() in 
+D:\Projects\Antigravit
+y\TrainMeX\App.xaml:li
+ne 1
+   at 
+TrainMeX.App.Main()

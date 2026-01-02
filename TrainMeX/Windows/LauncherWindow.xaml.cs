@@ -24,10 +24,7 @@ namespace TrainMeX.Windows {
 
         private GlobalHotkeyService _hotkeys;
 
-        protected override void OnSourceInitialized(EventArgs e) {
-            base.OnSourceInitialized(e);
-            InitializeHotkeys();
-        }
+
         
         private void InitializeHotkeys() {
             var helper = new System.Windows.Interop.WindowInteropHelper(this);
@@ -60,6 +57,50 @@ namespace TrainMeX.Windows {
             _hotkeys?.Dispose();
             (DataContext as IDisposable)?.Dispose();
             base.OnClosed(e);
+        }
+
+        protected override void OnSourceInitialized(EventArgs e) {
+            base.OnSourceInitialized(e);
+            InitializeHotkeys();
+            
+            ((System.Windows.Interop.HwndSource)PresentationSource.FromVisual(this)).AddHook(HookProc);
+        }
+
+        private IntPtr HookProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled) {
+            if (msg == 0x0024) { // WM_GETMINMAXINFO
+                WmGetMinMaxInfo(hwnd, lParam);
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam) {
+            var mmi = (MINMAXINFO)System.Runtime.InteropServices.Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
+            var currentScreen = System.Windows.Forms.Screen.FromHandle(hwnd);
+            var workArea = currentScreen.WorkingArea;
+            var monitorArea = currentScreen.Bounds;
+            
+            mmi.ptMaxPosition.x = Math.Abs(workArea.Left - monitorArea.Left);
+            mmi.ptMaxPosition.y = Math.Abs(workArea.Top - monitorArea.Top);
+            mmi.ptMaxSize.x = Math.Abs(workArea.Right - workArea.Left);
+            mmi.ptMaxSize.y = Math.Abs(workArea.Bottom - workArea.Top);
+            
+            System.Runtime.InteropServices.Marshal.StructureToPtr(mmi, lParam, true);
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        public struct POINT {
+            public int x;
+            public int y;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        public struct MINMAXINFO {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
         }
 
         private void Grid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) {

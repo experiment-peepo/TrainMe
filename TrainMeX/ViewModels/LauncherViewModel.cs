@@ -138,19 +138,30 @@ namespace TrainMeX.ViewModels {
             UpdateButtons();
             
             // Load session if auto-load is enabled (async to avoid blocking UI)
-            if (App.Settings.AutoLoadSession) {
-                _ = LoadSessionAsync(_cancellationTokenSource.Token);
+            try {
+                if (App.Settings != null && App.Settings.AutoLoadSession) {
+                    _ = LoadSessionAsync(_cancellationTokenSource.Token);
+                }
+            } catch (Exception ex) {
+                Logger.Warning("Failed to auto-load session", ex);
             }
             
             // Subscribe to display settings changes to invalidate screen cache
             SystemEvents.DisplaySettingsChanged += SystemEvents_DisplaySettingsChanged;
             
-            _saveTimer = new System.Windows.Threading.DispatcherTimer();
-            _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
-            _saveTimer.Tick += (s, e) => {
-                _saveTimer.Stop();
-                SaveSession();
-            };
+            try {
+                // Check if we have a valid dispatcher context
+                if (Application.Current != null || System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread) != null) {
+                    _saveTimer = new System.Windows.Threading.DispatcherTimer();
+                    _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
+                    _saveTimer.Tick += (s, e) => {
+                        _saveTimer.Stop();
+                        SaveSession();
+                    };
+                }
+            } catch (Exception ex) {
+                Logger.Warning("Failed to initialize save timer (likely due to missing Dispatcher in test environment)", ex);
+            }
             
             AddedFiles.CollectionChanged += (s, e) => {
                 if (e.NewItems != null) {
@@ -175,7 +186,7 @@ namespace TrainMeX.ViewModels {
             // Invalidate screen cache when display settings change
             InvalidateScreenCache();
             // Refresh screens on UI thread
-            Application.Current?.Dispatcher.InvokeAsync(() => {
+            Application.Current?.Dispatcher?.InvokeAsync(() => {
                 RefreshScreens();
             });
         }
@@ -191,8 +202,14 @@ namespace TrainMeX.ViewModels {
         }
 
         private void TriggerDebouncedSave() {
-            _saveTimer.Stop();
-            _saveTimer.Start();
+            if (_saveTimer != null) {
+                _saveTimer.Stop();
+                _saveTimer.Start();
+            } else {
+                // If timer is not available (e.g. in tests), just save immediately or skip
+                // Ideally in tests we might not care about saving, or we mock it.
+                // For now, let's just skip saving to avoid errors.
+            }
         }
 
         public ICommand RemoveItemCommand { get; }

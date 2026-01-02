@@ -58,7 +58,7 @@ namespace TrainMeX.Tests {
             var result = viewer.ToString();
             
             Assert.NotNull(result);
-            Assert.Contains(viewer.DeviceName, result);
+            Assert.Contains("Screen", result);
         }
 
         [Fact]

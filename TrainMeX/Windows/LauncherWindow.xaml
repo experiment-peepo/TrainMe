@@ -25,6 +25,12 @@
         Icon="pack://application:,,,/Images/icon.ico"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
         >
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" 
+                     ResizeBorderThickness="5" 
+                     GlassFrameThickness="0" 
+                     CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
     <Window.Resources>
         <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <local:PluralConverter x:Key="PluralConverter"/>
@@ -43,8 +49,17 @@
             BorderBrush="{StaticResource AccentPrimary}" 
             BorderThickness="1"
             CornerRadius="8">
-        <Grid Background="{StaticResource BackgroundPrimary}" MouseLeftButtonDown="Window_MouseLeftButtonDown">
-        <Grid.RowDefinitions>
+        <Grid MouseLeftButtonDown="Window_MouseLeftButtonDown">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                            <Setter Property="Margin" Value="{x:Static SystemParameters.WindowResizeBorderThickness}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -84,11 +99,9 @@
         
         <!-- Title section with better spacing -->
         <StackPanel Margin="0,20,0,20" Grid.Row="1">
-            <Label FontSize="32" FontWeight="Bold" Margin="0,0,0,6">TrainMeX</Label>
+            <Label Style="{StaticResource MainTitle}" Margin="0,0,0,6">TrainMeX</Label>
             <Label Style="{StaticResource LowerTitle}" 
-                   FontSize="13" 
                    FontStyle="Italic"
-                   Foreground="{StaticResource TextSecondary}"
                    Margin="0,0,0,0">Overlay video player for sissies</Label>
         </StackPanel>
         <Grid Margin="0,10,0,0" Grid.Row="2">
@@ -189,11 +202,11 @@
                                     </Setter>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListViewItem}}" Value="True">
-                                            <Setter Property="Background" Value="#352A36"/>
+                                            <Setter Property="Background" Value="{StaticResource BackgroundHeader}"/>
                                             <Setter Property="BorderBrush" Value="{StaticResource BorderPink}"/>
                                             <Setter Property="Effect">
                                                 <Setter.Value>
-                                                    <DropShadowEffect Color="#FF6B9D" BlurRadius="12" ShadowDepth="0" Opacity="0.4"/>
+                                                    <DropShadowEffect Color="#FF69B4" BlurRadius="12" ShadowDepth="0" Opacity="0.5"/>
                                                 </Setter.Value>
                                             </Setter>
                                         </DataTrigger>
@@ -312,7 +325,7 @@
             </Grid>
         </Grid>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10" Grid.Row="5">
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="5">
             <Button Command="{Binding SavePlaylistCommand}" Margin="6,0" Foreground="{StaticResource TextSecondary}" Background="Transparent" FontSize="12" BorderThickness="0" FontWeight="SemiBold" ToolTip="Save current playlist to a file">Save Playlist</Button>
             <Button Command="{Binding LoadPlaylistCommand}" Margin="6,0" Foreground="{StaticResource TextSecondary}" Background="Transparent" FontSize="12" BorderThickness="0" FontWeight="SemiBold" ToolTip="Load a playlist from a file">Load Playlist</Button>
             <Button Command="{Binding ClearAllCommand}" Margin="6,0" Foreground="{StaticResource TextSecondary}" Background="Transparent" FontSize="12" BorderThickness="0" FontWeight="SemiBold" ToolTip="Remove all videos from playlist">Clear Playlist</Button>
@@ -357,7 +370,16 @@
                 Content="{Binding HypnotizeButtonText}" 
                 Style="{StaticResource PrimaryButtonStyle}"
                 ToolTip="Start playing videos on assigned screens"
-                Grid.Row="8" />
+                Grid.Row="8">
+            <Button.Effect>
+                <DropShadowEffect Color="#FF69B4" BlurRadius="10" ShadowDepth="0" Opacity="0.4"/>
+            </Button.Effect>
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.Loaded">
+                    <BeginStoryboard Name="PulsingGlow" Storyboard="{StaticResource PulsingGlowStoryboard}"/>
+                </EventTrigger>
+            </Button.Triggers>
+        </Button>
         <Button x:Name="PauseButton" 
                 Command="{Binding PauseCommand}" 
                 IsEnabled="{Binding IsPauseEnabled}" 

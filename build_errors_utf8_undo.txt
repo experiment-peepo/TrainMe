@@ -1,0 +1,11 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+D:\Projects\Antigravity\TrainMeX\App.xaml(464,15): error MC3000: 'The 'ResourceDictionary' start tag on line 18 position 10 does not match the end tag of 'Style'. Line 464, position 15.' XML is not valid. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+
+Build FAILED.
+
+D:\Projects\Antigravity\TrainMeX\App.xaml(464,15): error MC3000: 'The 'ResourceDictionary' start tag on line 18 position 10 does not match the end tag of 'Style'. Line 464, position 15.' XML is not valid. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:00.79

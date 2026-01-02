@@ -65,34 +65,14 @@
                        FontWeight="SemiBold" 
                        FontSize="13"
                        Margin="0,0,0,12"/>
-                <Border Background="#FF8D7F8D"
-                        BorderBrush="{StaticResource BorderPink}"
-                        BorderThickness="4"
-                        CornerRadius="6"
-                        Padding="4"
-                        Margin="0,0,0,0"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Top">
-                    <Border.Effect>
-                        <DropShadowEffect Color="#FF69B4" BlurRadius="20" ShadowDepth="0" Opacity="1.0"/>
-                    </Border.Effect>
-                    <TextBox x:Name="InputTextBox"
-                             Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             Foreground="#FF000000"
-                             Background="#FFFFFFFF"
-                             BorderBrush="Transparent"
-                             BorderThickness="0"
-                             Padding="15,15"
-                             FontSize="15"
-                             FontWeight="Normal"
-                             Height="55"
-                             HorizontalAlignment="Stretch"
-                             VerticalContentAlignment="Center"
-                             CaretBrush="#FF000000"
-                             SelectionBrush="#FF69B4"
-                             SelectionOpacity="0.3"
-                             KeyDown="InputTextBox_KeyDown"/>
-                </Border>
+                <TextBox x:Name="InputTextBox"
+                         Style="{StaticResource PinkTextBoxStyle}"
+                         Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Height="50"
+                         VerticalContentAlignment="Center"
+                         Margin="0,0,0,5"
+                         KeyDown="InputTextBox_KeyDown"
+                         ToolTip="Enter video filename or URL"/>
             </StackPanel>
             
             <!-- Buttons -->
@@ -100,15 +80,6 @@
                        HorizontalAlignment="Right" 
                        Margin="20,0,20,20" 
                        Grid.Row="2">
-                <Button x:Name="CancelButton" 
-                        Click="CancelButton_Click"
-                        Margin="5,0" 
-                        Style="{StaticResource SecondaryButtonStyle}"
-                        FontSize="12"
-                        Padding="20,8"
-                        ToolTip="Cancel">
-                    Cancel
-                </Button>
                 <Button x:Name="OkButton" 
                         Click="OkButton_Click"
                         Margin="5,0" 
@@ -117,6 +88,15 @@
                         Padding="20,8"
                         ToolTip="OK">
                     OK
+                </Button>
+                <Button x:Name="CancelButton" 
+                        Click="CancelButton_Click"
+                        Margin="5,0" 
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        FontSize="12"
+                        Padding="20,8"
+                        ToolTip="Cancel">
+                    Cancel
                 </Button>
             </StackPanel>
         </Grid>

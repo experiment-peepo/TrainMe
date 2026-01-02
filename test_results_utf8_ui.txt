@@ -1,0 +1,44 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+  TrainMeX -> D:\Projects\Antigravity\TrainMeX\bin\Debug\net8.0-windows\win-x64\TrainMeX.dll
+  TrainMeX.Tests -> D:\Projects\Antigravity\TrainMeX.Tests\bin\Debug\net8.0-windows\TrainMeX.Tests.dll
+Test run for D:\Projects\Antigravity\TrainMeX.Tests\bin\Debug\net8.0-windows\TrainMeX.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+dotnet : [xUnit.net 
+00:00:00.16]     Train
+MeX.Tests.ScreenViewer
+Tests.ToString_Returns
+FormattedString [FAIL]
+At line:1 char:1
++ dotnet test 
+TrainMeX.sln > 
+test_results_ui.txt 
+2>&1; Get-Content 
+test ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: ([xUnit.net   
+  00:0...edString     
+[FAIL]:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  Failed TrainMeX.Tests.ScreenViewerTests.ToString_ReturnsFormattedString [1 ms]
+  Error Message:
+   Assert.Contains() Failure: Sub-string not found
+String:    "Screen 1 : 1920x1080 (Primary)"
+Not found: "\\\\.\\DISPLAY1"
+  Stack Trace:
+     at TrainMeX.Tests.ScreenViewerTests.ToString_ReturnsFormattedString() in D:\Projects\Antigravity\TrainMeX.Tests\ScreenViewerTests.cs:line 61
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     1, Passed:   205, Skipped:     0, Total:   206, Duration: 524 ms - TrainMeX.Tests.dll (net8.0)

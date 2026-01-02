@@ -1,0 +1,13 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+D:\Projects\Antigravity\TrainMeX\App.xaml(17,5): error MC3072: The property 'FontFamily' does not exist in XML namespace 'http://schemas.microsoft.com/winfx/2006/xaml/presentation'. Line 17 Position 5. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+D:\Projects\Antigravity\TrainMeX\Windows\SettingsWindow.xaml(248,11): error MC3000: 'The 'ScrollViewer' start tag on line 65 position 14 does not match the end tag of 'StackPanel'. Line 248, position 11.' XML is not valid. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+
+Build FAILED.
+
+D:\Projects\Antigravity\TrainMeX\App.xaml(17,5): error MC3072: The property 'FontFamily' does not exist in XML namespace 'http://schemas.microsoft.com/winfx/2006/xaml/presentation'. Line 17 Position 5. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+D:\Projects\Antigravity\TrainMeX\Windows\SettingsWindow.xaml(248,11): error MC3000: 'The 'ScrollViewer' start tag on line 65 position 14 does not match the end tag of 'StackPanel'. Line 248, position 11.' XML is not valid. [D:\Projects\Antigravity\TrainMeX\TrainMeX.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.19

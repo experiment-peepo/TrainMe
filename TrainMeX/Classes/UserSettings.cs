@@ -17,12 +17,12 @@ namespace TrainMeX.Classes {
         public uint PanicHotkeyModifiers { get; set; } = 0x0002 | 0x0004; // Ctrl+Shift (default)
         public string PanicHotkeyKey { get; set; } = "End"; // Default key
 
-        private static readonly string SettingsFile = "settings.json";
+        public static string SettingsFilePath { get; set; } = "settings.json";
 
         public static UserSettings Load() {
             try {
-                if (File.Exists(SettingsFile)) {
-                    string json = File.ReadAllText(SettingsFile);
+                if (File.Exists(SettingsFilePath)) {
+                    string json = File.ReadAllText(SettingsFilePath);
                     var settings = JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
                     // Validate and clamp loaded values
                     settings.ValidateAndClampValues();
@@ -81,7 +81,7 @@ namespace TrainMeX.Classes {
         public void Save() {
             try {
                 string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(SettingsFile, json);
+                File.WriteAllText(SettingsFilePath, json);
             } catch (Exception ex) {
                 Logger.Error("Failed to save settings", ex);
             }
