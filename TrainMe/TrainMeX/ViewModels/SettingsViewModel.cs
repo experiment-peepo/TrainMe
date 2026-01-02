@@ -1,3 +1,7 @@
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Runtime.Versioning;
+using System.Windows.Forms;
 using System.Windows.Input;
 using TrainMeX.Classes;
 
@@ -14,12 +18,14 @@ namespace TrainMeX.ViewModels {
         private bool _panicHotkeyShift;
         private bool _panicHotkeyAlt;
         private string _panicHotkeyKey;
+        private ScreenViewer _selectedDefaultMonitor;
 
         // Modifier flags
         private const uint MOD_CONTROL = 0x0002;
         private const uint MOD_SHIFT = 0x0004;
         private const uint MOD_ALT = 0x0001;
 
+        [SupportedOSPlatform("windows")]
         public SettingsViewModel() {
             // Load current settings
             var settings = App.Settings;
@@ -34,8 +40,37 @@ namespace TrainMeX.ViewModels {
             _panicHotkeyAlt = (settings.PanicHotkeyModifiers & MOD_ALT) != 0;
             _panicHotkeyKey = settings.PanicHotkeyKey ?? "End";
 
+            // Load available monitors
+            AvailableMonitors = new ObservableCollection<ScreenViewer>();
+            RefreshAvailableMonitors();
+            
+            // Load default monitor from settings
+            if (!string.IsNullOrEmpty(settings.DefaultMonitorDeviceName)) {
+                _selectedDefaultMonitor = AvailableMonitors.FirstOrDefault(m => m.DeviceName == settings.DefaultMonitorDeviceName);
+            }
+
             OkCommand = new RelayCommand(Ok);
             CancelCommand = new RelayCommand(Cancel);
+        }
+
+        [SupportedOSPlatform("windows")]
+        private void RefreshAvailableMonitors() {
+            AvailableMonitors.Clear();
+            try {
+                var screens = WindowServices.GetAllScreenViewers();
+                foreach (var screen in screens) {
+                    AvailableMonitors.Add(screen);
+                }
+            } catch (System.Exception ex) {
+                Logger.Warning("Failed to load monitors for settings", ex);
+            }
+        }
+
+        public ObservableCollection<ScreenViewer> AvailableMonitors { get; }
+
+        public ScreenViewer SelectedDefaultMonitor {
+            get => _selectedDefaultMonitor;
+            set => SetProperty(ref _selectedDefaultMonitor, value);
         }
 
         public double DefaultOpacity {
@@ -114,6 +149,9 @@ namespace TrainMeX.ViewModels {
             settings.DefaultVolume = DefaultVolume;
             settings.AutoLoadSession = AutoLoadSession;
             settings.LauncherAlwaysOnTop = LauncherAlwaysOnTop;
+            
+            // Save default monitor
+            settings.DefaultMonitorDeviceName = SelectedDefaultMonitor?.DeviceName;
             
             // Save panic hotkey settings
             uint modifiers = 0;

@@ -164,9 +164,16 @@ namespace TrainMeX.Classes {
         private async System.Threading.Tasks.Task<IEnumerable<VideoItem>> NormalizeItemsAsync(IEnumerable<VideoItem> files) {
             var list = new List<VideoItem>();
             foreach (var f in files ?? Enumerable.Empty<VideoItem>()) {
-                if (Path.IsPathRooted(f.FilePath)) {
-                    // Use async version to avoid deadlocks
-                    if (await CheckFileExists(f.FilePath).ConfigureAwait(false)) list.Add(f);
+                if (f.IsUrl) {
+                    // For URLs, just validate and add (no file existence check)
+                    if (FileValidator.ValidateVideoUrl(f.FilePath, out _)) {
+                        list.Add(f);
+                    }
+                } else if (Path.IsPathRooted(f.FilePath)) {
+                    // For local files, check file existence
+                    if (await CheckFileExists(f.FilePath).ConfigureAwait(false)) {
+                        list.Add(f);
+                    }
                 }
             }
             return list;

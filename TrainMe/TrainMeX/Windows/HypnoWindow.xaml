@@ -29,6 +29,7 @@
             Source="{Binding CurrentSource}"
             Stretch="UniformToFill"
             LoadedBehavior="Manual"
+            UnloadedBehavior="Manual"
             MediaEnded="FirstVideo_MediaEnded"
             MediaFailed="FirstVideo_MediaFailed"
             MediaOpened="FirstVideo_MediaOpened"

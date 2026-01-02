@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using TrainMeX.Classes;
 
@@ -14,7 +15,52 @@ namespace TrainMeX.ViewModels {
 
     public class VideoItem : ObservableObject {
         public string FilePath { get; }
-        public string FileName => Path.GetFileName(FilePath);
+        
+        /// <summary>
+        /// Gets whether this item is a URL (not a local file path)
+        /// </summary>
+        public bool IsUrl => Uri.TryCreate(FilePath, UriKind.Absolute, out Uri uri) && 
+                             (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        
+        /// <summary>
+        /// Optional title extracted from the video page. If null or empty, FileName will fall back to URL-based extraction.
+        /// </summary>
+        private string _title;
+        public string Title {
+            get => _title;
+            set => SetProperty(ref _title, value);
+        }
+        
+        /// <summary>
+        /// Gets the display name for the video item
+        /// </summary>
+        public string FileName {
+            get {
+                // Prefer Title if available and not empty
+                if (!string.IsNullOrWhiteSpace(Title)) {
+                    return Title;
+                }
+                
+                // Fall back to URL-based or file-based extraction
+                if (IsUrl) {
+                    try {
+                        var uri = new Uri(FilePath);
+                        var segments = uri.Segments;
+                        if (segments.Length > 0) {
+                            var lastSegment = segments[segments.Length - 1];
+                            if (!string.IsNullOrWhiteSpace(lastSegment) && lastSegment != "/") {
+                                return Uri.UnescapeDataString(lastSegment);
+                            }
+                        }
+                        // Fallback to domain + path
+                        return $"{uri.Host}{uri.AbsolutePath}";
+                    } catch {
+                        return FilePath;
+                    }
+                }
+                return Path.GetFileName(FilePath);
+            }
+        }
 
         private ScreenViewer _assignedScreen;
         public ScreenViewer AssignedScreen {
@@ -61,21 +107,33 @@ namespace TrainMeX.ViewModels {
         }
 
         /// <summary>
-        /// Validates the file and updates the validation status
+        /// Validates the file or URL and updates the validation status
         /// </summary>
         public void Validate() {
             if (string.IsNullOrWhiteSpace(FilePath)) {
                 ValidationStatus = FileValidationStatus.Invalid;
-                ValidationError = "File path is empty";
+                ValidationError = "File path or URL is empty";
                 return;
             }
 
-            if (!FileValidator.ValidateVideoFile(FilePath, out string errorMessage)) {
-                ValidationStatus = File.Exists(FilePath) ? FileValidationStatus.Invalid : FileValidationStatus.Missing;
-                ValidationError = errorMessage;
+            if (IsUrl) {
+                // Validate URL
+                if (!FileValidator.ValidateVideoUrl(FilePath, out string errorMessage)) {
+                    ValidationStatus = FileValidationStatus.Invalid;
+                    ValidationError = errorMessage;
+                } else {
+                    ValidationStatus = FileValidationStatus.Valid;
+                    ValidationError = null;
+                }
             } else {
-                ValidationStatus = FileValidationStatus.Valid;
-                ValidationError = null;
+                // Validate local file
+                if (!FileValidator.ValidateVideoFile(FilePath, out string errorMessage)) {
+                    ValidationStatus = File.Exists(FilePath) ? FileValidationStatus.Invalid : FileValidationStatus.Missing;
+                    ValidationError = errorMessage;
+                } else {
+                    ValidationStatus = FileValidationStatus.Valid;
+                    ValidationError = null;
+                }
             }
         }
     }

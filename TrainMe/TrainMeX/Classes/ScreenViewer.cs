@@ -47,8 +47,7 @@ namespace TrainMeX.Classes {
             bool isPrimary = Screen?.Primary ?? false;
             string primaryText = isPrimary ? " (Primary)" : "";
             
-            // Include DeviceName and Primary indicator
-            return $"Screen {screenNumber} : {res}{primaryText} - {DeviceName}";
+            return $"Screen {screenNumber} : {res}{primaryText}";
         }
     }
 }

@@ -1,3 +1,5 @@
+using System;
+
 namespace TrainMeX.Classes {
     /// <summary>
     /// Centralized constants for the application
@@ -6,7 +8,17 @@ namespace TrainMeX.Classes {
         /// <summary>
         /// Supported video file extensions
         /// </summary>
-        public static readonly string[] VideoExtensions = { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".m4v" };
+        public static readonly string[] VideoExtensions = { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".m4v", ".webm" };
+
+        /// <summary>
+        /// Supported video URL domains
+        /// </summary>
+        public static readonly string[] SupportedVideoDomains = {
+            "rule34video.com",
+            "pmvhaven.com",
+            "iwara.tv",
+            "hypnotube.com"
+        };
 
         /// <summary>
         /// Maximum number of entries in the file existence cache
@@ -37,6 +49,21 @@ namespace TrainMeX.Classes {
         /// Warning threshold for file size in bytes (1GB)
         /// </summary>
         public const long FileSizeWarningThreshold = 1024L * 1024 * 1024;
+
+        /// <summary>
+        /// HTTP request timeout in seconds
+        /// </summary>
+        public const int HttpRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// URL extraction timeout in seconds
+        /// </summary>
+        public const int UrlExtractionTimeoutSeconds = 30;
+
+        /// <summary>
+        /// URL cache TTL in minutes
+        /// </summary>
+        public const int UrlCacheTtlMinutes = 60;
     }
 }
 

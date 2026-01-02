@@ -89,6 +89,20 @@
                           Foreground="{StaticResource TextTertiary}" FontSize="9" Margin="0,3,0,0" FontStyle="Italic"/>
             </StackPanel>
             
+            <!-- Default Monitor -->
+            <StackPanel Margin="0,0,0,15">
+                <Label Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,0,8">Default Monitor</Label>
+                <TextBlock Text="Monitor to use by default when adding new videos" 
+                          Foreground="{StaticResource TextTertiary}" FontSize="9" FontStyle="Italic" Margin="0,0,0,8"/>
+                <ComboBox x:Name="DefaultMonitorComboBox"
+                          ItemsSource="{Binding AvailableMonitors}"
+                          SelectedItem="{Binding SelectedDefaultMonitor}"
+                          Style="{StaticResource PinkComboBoxStyle}"
+                          ToolTip="Select the monitor to use by default for new videos"/>
+                <TextBlock Text="If the selected monitor is unavailable, the primary monitor will be used" 
+                          Foreground="{StaticResource TextTertiary}" FontSize="9" Margin="0,3,0,0" FontStyle="Italic"/>
+            </StackPanel>
+            
             <!-- Separator -->
             <Border Background="{StaticResource TextTertiary}" Opacity="0.3" Height="1" Margin="0,8,0,20"/>
             

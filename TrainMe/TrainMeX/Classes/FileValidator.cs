@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace TrainMeX.Classes {
     /// <summary>
@@ -154,6 +155,110 @@ namespace TrainMeX.Classes {
             // File size validation removed - no limit enforced
             
             return true;
+        }
+
+        /// <summary>
+        /// Validates if a string is a valid HTTP/HTTPS URL
+        /// </summary>
+        /// <param name="url">The URL to validate</param>
+        /// <returns>True if valid URL, false otherwise</returns>
+        public static bool IsValidUrl(string url) {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            
+            return Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
+                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        }
+
+        /// <summary>
+        /// Determines if a URL is a page URL (needs extraction) vs a direct video URL
+        /// </summary>
+        /// <param name="url">The URL to check</param>
+        /// <returns>True if page URL, false if direct video URL or invalid</returns>
+        public static bool IsPageUrl(string url) {
+            if (!IsValidUrl(url)) return false;
+            
+            try {
+                var uri = new Uri(url);
+                var host = uri.Host.ToLowerInvariant();
+                
+                // Check if URL is from a supported domain
+                bool isSupportedDomain = Constants.SupportedVideoDomains.Any(domain => 
+                    host == domain || host.EndsWith("." + domain));
+                
+                if (!isSupportedDomain) return false;
+                
+                // Check if URL has a video file extension (direct video URL)
+                var path = uri.AbsolutePath.ToLowerInvariant();
+                bool hasVideoExtension = Constants.VideoExtensions.Any(ext => 
+                    path.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+                
+                // If it has a video extension, it's a direct URL, not a page URL
+                return !hasVideoExtension;
+            } catch {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Normalizes a URL by removing fragments and normalizing query parameters
+        /// </summary>
+        /// <param name="url">The URL to normalize</param>
+        /// <returns>Normalized URL, or original if invalid</returns>
+        public static string NormalizeUrl(string url) {
+            if (!IsValidUrl(url)) return url;
+            
+            try {
+                var uri = new Uri(url);
+                var builder = new UriBuilder(uri) {
+                    Fragment = string.Empty // Remove fragment
+                };
+                return builder.Uri.ToString();
+            } catch {
+                return url;
+            }
+        }
+
+        /// <summary>
+        /// Comprehensive validation of a video URL
+        /// </summary>
+        /// <param name="url">The URL to validate</param>
+        /// <param name="errorMessage">Output parameter for error message if validation fails</param>
+        /// <returns>True if URL is valid, false otherwise</returns>
+        public static bool ValidateVideoUrl(string url, out string errorMessage) {
+            errorMessage = null;
+            
+            if (!IsValidUrl(url)) {
+                errorMessage = "Invalid URL. Please provide a valid HTTP or HTTPS URL.";
+                return false;
+            }
+            
+            try {
+                var uri = new Uri(url);
+                var path = uri.AbsolutePath.ToLowerInvariant();
+                
+                // Check if URL has a video file extension
+                bool hasVideoExtension = Constants.VideoExtensions.Any(ext => 
+                    path.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+                
+                // Check if URL is from a supported domain
+                var host = uri.Host.ToLowerInvariant();
+                bool isSupportedDomain = Constants.SupportedVideoDomains.Any(domain => 
+                    host == domain || host.EndsWith("." + domain));
+                
+                // Accept if it has a video extension OR is from a supported domain
+                // (supported domains will be handled by URL extraction)
+                if (hasVideoExtension || isSupportedDomain) {
+                    return true;
+                }
+                
+                // For other URLs, be permissive - MediaElement can handle various formats
+                // But warn the user
+                errorMessage = "URL may not be a video. MediaElement will attempt to play it.";
+                return true; // Still accept it, but warn
+            } catch (Exception ex) {
+                errorMessage = $"Invalid URL format: {ex.Message}";
+                return false;
+            }
         }
     }
 }

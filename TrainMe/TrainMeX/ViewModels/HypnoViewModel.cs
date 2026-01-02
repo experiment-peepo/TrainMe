@@ -158,25 +158,39 @@ namespace TrainMeX.ViewModels {
                 
                 var path = _currentItem.FilePath;
                 
-                if (!Path.IsPathRooted(path)) {
-                    lock (_loadLock) {
-                        _isLoading = false;
+                // Validate based on whether it's a URL or local file
+                if (_currentItem.IsUrl) {
+                    // For URLs, validate URL format
+                    if (!FileValidator.ValidateVideoUrl(path, out string urlValidationError)) {
+                        Logger.Warning($"URL validation failed for '{_currentItem.FileName}': {urlValidationError}. Skipping to next video.");
+                        lock (_loadLock) {
+                            _isLoading = false;
+                        }
+                        PlayNext();
+                        return;
                     }
-                    return;
-                }
-                
-                // Re-validate file existence before attempting to load
-                // Files could be deleted or become inaccessible between queue setup and playback
-                if (!FileValidator.ValidateVideoFile(path, out string validationError)) {
-                    Logger.Warning($"File validation failed for '{_currentItem.FileName}': {validationError}. Skipping to next video.");
-                    // Reset loading flag before calling PlayNext() recursively
-                    lock (_loadLock) {
-                        _isLoading = false;
+                } else {
+                    // For local files, check if path is rooted
+                    if (!Path.IsPathRooted(path)) {
+                        lock (_loadLock) {
+                            _isLoading = false;
+                        }
+                        return;
                     }
-                    // Skip to next video instead of failing
-                    // PlayNext() will check loading state and proceed safely
-                    PlayNext();
-                    return;
+                    
+                    // Re-validate file existence before attempting to load
+                    // Files could be deleted or become inaccessible between queue setup and playback
+                    if (!FileValidator.ValidateVideoFile(path, out string validationError)) {
+                        Logger.Warning($"File validation failed for '{_currentItem.FileName}': {validationError}. Skipping to next video.");
+                        // Reset loading flag before calling PlayNext() recursively
+                        lock (_loadLock) {
+                            _isLoading = false;
+                        }
+                        // Skip to next video instead of failing
+                        // PlayNext() will check loading state and proceed safely
+                        PlayNext();
+                        return;
+                    }
                 }
                 
                 // Apply per-monitor/per-item settings
@@ -189,7 +203,15 @@ namespace TrainMeX.ViewModels {
                 
                 // Set the expected source before changing CurrentSource
                 // This allows OnMediaOpened to verify the opened media matches what we expect
-                var newSource = new Uri(path, UriKind.Absolute);
+                // Handle both local files and URLs
+                Uri newSource;
+                if (_currentItem.IsUrl) {
+                    // For URLs, use the URL directly
+                    newSource = new Uri(path, UriKind.Absolute);
+                } else {
+                    // For local files, use absolute file URI
+                    newSource = new Uri(path, UriKind.Absolute);
+                }
                 
                 // Set expected source inside lock for thread safety
                 lock (_loadLock) {

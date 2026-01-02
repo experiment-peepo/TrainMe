@@ -10,6 +10,7 @@ namespace TrainMeX.Classes {
         public bool LauncherAlwaysOnTop { get; set; } = false;
         public double DefaultOpacity { get; set; } = 0.9;
         public double DefaultVolume { get; set; } = 0.5;
+        public string DefaultMonitorDeviceName { get; set; } = null;
         
         // Panic hotkey configuration
         // Modifiers: Ctrl=2, Shift=4, Alt=1 (can be combined with bitwise OR)

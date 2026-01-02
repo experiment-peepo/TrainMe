@@ -288,6 +288,94 @@ namespace TrainMeX.Tests {
             Assert.NotNull(errorMessage);
         }
 
+        [Fact]
+        public void IsValidUrl_WithHttpUrl_ReturnsTrue() {
+            var result = FileValidator.IsValidUrl("http://example.com/video.mp4");
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void IsValidUrl_WithHttpsUrl_ReturnsTrue() {
+            var result = FileValidator.IsValidUrl("https://example.com/video.mp4");
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void IsValidUrl_WithInvalidUrl_ReturnsFalse() {
+            var result = FileValidator.IsValidUrl("not a url");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsValidUrl_WithNull_ReturnsFalse() {
+            var result = FileValidator.IsValidUrl(null);
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsValidUrl_WithEmptyString_ReturnsFalse() {
+            var result = FileValidator.IsValidUrl("");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsPageUrl_WithDirectVideoUrl_ReturnsFalse() {
+            var result = FileValidator.IsPageUrl("https://example.com/video.mp4");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void IsPageUrl_WithSupportedDomainPageUrl_ReturnsTrue() {
+            var result = FileValidator.IsPageUrl("https://rule34video.com/videos/123");
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void IsPageUrl_WithUnsupportedDomain_ReturnsFalse() {
+            var result = FileValidator.IsPageUrl("https://example.com/page");
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void NormalizeUrl_WithFragment_RemovesFragment() {
+            var result = FileValidator.NormalizeUrl("https://example.com/video.mp4#fragment");
+            Assert.DoesNotContain("#", result);
+        }
+
+        [Fact]
+        public void NormalizeUrl_WithValidUrl_ReturnsUrl() {
+            var url = "https://example.com/video.mp4";
+            var result = FileValidator.NormalizeUrl(url);
+            Assert.Equal(url, result);
+        }
+
+        [Fact]
+        public void ValidateVideoUrl_WithDirectVideoUrl_ReturnsTrue() {
+            var result = FileValidator.ValidateVideoUrl("https://example.com/video.mp4", out string errorMessage);
+            Assert.True(result);
+            Assert.Null(errorMessage);
+        }
+
+        [Fact]
+        public void ValidateVideoUrl_WithSupportedDomain_ReturnsTrue() {
+            var result = FileValidator.ValidateVideoUrl("https://rule34video.com/video", out string errorMessage);
+            Assert.True(result);
+        }
+
+        [Fact]
+        public void ValidateVideoUrl_WithInvalidUrl_ReturnsFalse() {
+            var result = FileValidator.ValidateVideoUrl("not a url", out string errorMessage);
+            Assert.False(result);
+            Assert.NotNull(errorMessage);
+        }
+
+        [Fact]
+        public void ValidateVideoUrl_WithNull_ReturnsFalse() {
+            var result = FileValidator.ValidateVideoUrl(null, out string errorMessage);
+            Assert.False(result);
+            Assert.NotNull(errorMessage);
+        }
+
         public void Dispose() {
             try {
                 if (Directory.Exists(_testDirectory)) {

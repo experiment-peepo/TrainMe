@@ -212,6 +212,58 @@ namespace TrainMeX.Tests {
             Assert.NotNull(item);
         }
 
+        [Fact]
+        public void IsUrl_WithHttpUrl_ReturnsTrue() {
+            var item = new VideoItem("http://example.com/video.mp4");
+            Assert.True(item.IsUrl);
+        }
+
+        [Fact]
+        public void IsUrl_WithHttpsUrl_ReturnsTrue() {
+            var item = new VideoItem("https://example.com/video.mp4");
+            Assert.True(item.IsUrl);
+        }
+
+        [Fact]
+        public void IsUrl_WithLocalFilePath_ReturnsFalse() {
+            var item = new VideoItem(_testVideoFile);
+            Assert.False(item.IsUrl);
+        }
+
+        [Fact]
+        public void FileName_WithUrl_ExtractsFileName() {
+            var item = new VideoItem("https://example.com/path/to/video.mp4");
+            var fileName = item.FileName;
+            Assert.NotNull(fileName);
+            Assert.Contains("video", fileName);
+        }
+
+        [Fact]
+        public void FileName_WithUrlWithoutFileName_ReturnsHostAndPath() {
+            var item = new VideoItem("https://example.com/path/");
+            var fileName = item.FileName;
+            Assert.NotNull(fileName);
+            // The implementation returns host + path, so it should contain either the host or path
+            Assert.True(fileName.Contains("example.com") || fileName.Contains("path"));
+        }
+
+        [Fact]
+        public void Validate_WithValidUrl_SetsStatusToValid() {
+            var item = new VideoItem("https://rule34video.com/video.mp4");
+            item.Validate();
+            Assert.Equal(FileValidationStatus.Valid, item.ValidationStatus);
+            Assert.Null(item.ValidationError);
+            Assert.True(item.IsValid);
+        }
+
+
+        [Fact]
+        public void Validate_WithSupportedDomainUrl_SetsStatusToValid() {
+            var item = new VideoItem("https://rule34video.com/video");
+            item.Validate();
+            Assert.Equal(FileValidationStatus.Valid, item.ValidationStatus);
+        }
+
         public void Dispose() {
             try {
                 if (Directory.Exists(_testDirectory)) {

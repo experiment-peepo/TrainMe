@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using TrainMeX.Classes;
+using TrainMeX.Windows;
 using Microsoft.Win32;
 
 namespace TrainMeX.ViewModels {
@@ -99,6 +100,8 @@ namespace TrainMeX.ViewModels {
         public ICommand DehypnotizeCommand { get; }
         public ICommand PauseCommand { get; }
         public ICommand BrowseCommand { get; }
+        public ICommand AddUrlCommand { get; }
+        public ICommand ImportPlaylistCommand { get; }
         public ICommand RemoveSelectedCommand { get; }
         public ICommand ClearAllCommand { get; }
         public ICommand ExitCommand { get; }
@@ -106,15 +109,21 @@ namespace TrainMeX.ViewModels {
 
         private System.Windows.Threading.DispatcherTimer _saveTimer;
         private CancellationTokenSource _cancellationTokenSource;
+        private readonly VideoUrlExtractor _urlExtractor;
+        private readonly PlaylistImporter _playlistImporter;
 
         public LauncherViewModel() {
             _cancellationTokenSource = new CancellationTokenSource();
+            _urlExtractor = new VideoUrlExtractor();
+            _playlistImporter = new PlaylistImporter(_urlExtractor);
             RefreshScreens();
 
             HypnotizeCommand = new RelayCommand(Hypnotize, _ => IsHypnotizeEnabled);
             DehypnotizeCommand = new RelayCommand(Dehypnotize);
             PauseCommand = new RelayCommand(Pause);
             BrowseCommand = new RelayCommand(Browse);
+            AddUrlCommand = new RelayCommand(AddUrl);
+            ImportPlaylistCommand = new RelayCommand(ImportPlaylist);
             RemoveSelectedCommand = new RelayCommand(RemoveSelected);
             RemoveItemCommand = new RelayCommand(RemoveItem);
             ClearAllCommand = new RelayCommand(ClearAll);
@@ -257,6 +266,25 @@ namespace TrainMeX.ViewModels {
             _screensCacheTime = DateTime.MinValue;
         }
 
+        /// <summary>
+        /// Gets the default screen based on settings, falling back to primary screen if the saved monitor is unavailable
+        /// </summary>
+        [SupportedOSPlatform("windows")]
+        private ScreenViewer GetDefaultScreen() {
+            if (AvailableScreens.Count == 0) RefreshScreens();
+            
+            var settings = App.Settings;
+            if (!string.IsNullOrEmpty(settings.DefaultMonitorDeviceName)) {
+                var defaultScreen = AvailableScreens.FirstOrDefault(s => s.DeviceName == settings.DefaultMonitorDeviceName);
+                if (defaultScreen != null) {
+                    return defaultScreen;
+                }
+            }
+            
+            // Fall back to primary screen, or first available if no primary
+            return AvailableScreens.FirstOrDefault(v => v.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
+        }
+
         private void UpdateButtons() {
             bool hasFiles = AddedFiles.Count > 0;
             IsHypnotizeEnabled = hasFiles && _allFilesAssigned;
@@ -368,6 +396,221 @@ namespace TrainMeX.ViewModels {
             }
         }
 
+        private void AddUrl(object obj) {
+            _ = AddUrlAsync().ContinueWith(task => {
+                if (task.IsFaulted) {
+                    var ex = task.Exception?.GetBaseException() ?? task.Exception;
+                    Logger.Error("Error in AddUrl operation", ex);
+                    Application.Current?.Dispatcher.InvokeAsync(() => {
+                        SetStatusMessage($"Error adding URL: {ex?.Message ?? "Unknown error"}", StatusMessageType.Error);
+                    });
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private async Task AddUrlAsync() {
+            IsLoading = true;
+            SetStatusMessage("Enter video URL...", StatusMessageType.Info);
+
+            try {
+                // Show input dialog
+                var inputUrl = InputDialogWindow.ShowDialog(
+                    Application.Current.MainWindow, 
+                    "Add Video URL", 
+                    "Video URL:"
+                );
+                if (string.IsNullOrWhiteSpace(inputUrl)) {
+                    IsLoading = false;
+                    return;
+                }
+                await ProcessUrlAsync(inputUrl.Trim());
+            } catch (Exception ex) {
+                Logger.Error("Error in AddUrlAsync", ex);
+                SetStatusMessage($"Error adding URL: {ex.Message}", StatusMessageType.Error);
+            } finally {
+                IsLoading = false;
+            }
+        }
+
+        private async Task ProcessUrlAsync(string inputUrl) {
+            SetStatusMessage("Processing URL...", StatusMessageType.Info);
+
+            try {
+                // Check if it's a page URL that needs extraction
+                string finalUrl = inputUrl;
+                if (FileValidator.IsPageUrl(inputUrl)) {
+                    SetStatusMessage("Extracting video URL from page...", StatusMessageType.Info);
+                    finalUrl = await _urlExtractor.ExtractVideoUrlAsync(inputUrl, _cancellationTokenSource.Token);
+                    
+                    if (string.IsNullOrWhiteSpace(finalUrl)) {
+                        SetStatusMessage("Failed to extract video URL from page. The page may not contain a video or the site structure may have changed.", StatusMessageType.Error);
+                        return;
+                    }
+                }
+
+                // Validate the URL
+                if (!FileValidator.ValidateVideoUrl(finalUrl, out string errorMessage)) {
+                    SetStatusMessage($"Invalid video URL: {errorMessage}", StatusMessageType.Error);
+                    return;
+                }
+
+                // Check for duplicates
+                var normalizedUrl = FileValidator.NormalizeUrl(finalUrl);
+                var existingPaths = new HashSet<string>(AddedFiles.Select(x => 
+                    x.IsUrl ? FileValidator.NormalizeUrl(x.FilePath) : x.FilePath), 
+                    StringComparer.OrdinalIgnoreCase);
+
+                if (existingPaths.Contains(normalizedUrl)) {
+                    SetStatusMessage("URL is already in the playlist", StatusMessageType.Warning);
+                    return;
+                }
+
+                // Ensure screens are up to date
+                if (AvailableScreens.Count == 0) RefreshScreens();
+                var defaultScreen = GetDefaultScreen();
+
+                // Create and add video item
+                var item = new VideoItem(finalUrl, defaultScreen);
+                var settings = App.Settings;
+                item.Opacity = settings.DefaultOpacity;
+                item.Volume = settings.DefaultVolume;
+                
+                // Try to extract title if it was a page URL (but never fail if extraction fails)
+                if (FileValidator.IsPageUrl(inputUrl)) {
+                    try {
+                        var title = await _urlExtractor.ExtractVideoTitleAsync(inputUrl, _cancellationTokenSource.Token);
+                        if (!string.IsNullOrWhiteSpace(title)) {
+                            item.Title = title;
+                        }
+                    } catch (Exception ex) {
+                        Logger.Warning($"Error extracting title from {inputUrl}: {ex.Message}. VideoItem created without title.");
+                        // Continue - VideoItem will use URL-based name extraction
+                    }
+                }
+                
+                item.Validate();
+
+                if (item.ValidationStatus == FileValidationStatus.Valid) {
+                    AddedFiles.Add(item);
+                    SetStatusMessage($"Added URL: {item.FileName}", StatusMessageType.Success);
+                    UpdateButtons();
+                    SaveSession();
+                } else {
+                    SetStatusMessage($"URL validation failed: {item.ValidationError}", StatusMessageType.Error);
+                }
+            } catch (OperationCanceledException) {
+                SetStatusMessage("Operation cancelled", StatusMessageType.Warning);
+            } catch (Exception ex) {
+                Logger.Error("Error processing URL", ex);
+                SetStatusMessage($"Error processing URL: {ex.Message}", StatusMessageType.Error);
+            }
+        }
+
+        private void ImportPlaylist(object obj) {
+            _ = ImportPlaylistAsync().ContinueWith(task => {
+                if (task.IsFaulted) {
+                    var ex = task.Exception?.GetBaseException() ?? task.Exception;
+                    Logger.Error("Error in ImportPlaylist operation", ex);
+                    Application.Current?.Dispatcher.InvokeAsync(() => {
+                        SetStatusMessage($"Error importing playlist: {ex?.Message ?? "Unknown error"}", StatusMessageType.Error);
+                    });
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        private async Task ImportPlaylistAsync() {
+            IsLoading = true;
+            SetStatusMessage("Enter playlist URL...", StatusMessageType.Info);
+
+            try {
+                // Show input dialog
+                var playlistUrl = InputDialogWindow.ShowDialog(
+                    Application.Current.MainWindow, 
+                    "Import Playlist", 
+                    "Playlist URL:"
+                );
+                if (string.IsNullOrWhiteSpace(playlistUrl)) {
+                    IsLoading = false;
+                    return;
+                }
+                var trimmedUrl = playlistUrl.Trim();
+                
+                // Validate URL
+                if (!FileValidator.IsValidUrl(trimmedUrl)) {
+                    SetStatusMessage("Invalid playlist URL", StatusMessageType.Error);
+                    IsLoading = false;
+                    return;
+                }
+
+                SetStatusMessage("Importing playlist...", StatusMessageType.Info);
+
+                // Import playlist with progress updates
+                int current = 0;
+                int total = 0;
+                var videoItems = await _playlistImporter.ImportPlaylistAsync(
+                    trimmedUrl,
+                    (c, t) => {
+                        current = c;
+                        total = t;
+                        Application.Current?.Dispatcher.InvokeAsync(() => {
+                            SetStatusMessage($"Importing playlist... {c} of {t} videos", StatusMessageType.Info);
+                        });
+                    },
+                    _cancellationTokenSource.Token
+                );
+
+                if (videoItems == null || videoItems.Count == 0) {
+                    SetStatusMessage("No videos found in playlist", StatusMessageType.Warning);
+                    IsLoading = false;
+                    return;
+                }
+
+                // Ensure screens are up to date
+                if (AvailableScreens.Count == 0) RefreshScreens();
+                var defaultScreen = GetDefaultScreen();
+
+                // Check for duplicates and add items
+                var existingPaths = new HashSet<string>(AddedFiles.Select(x => 
+                    x.IsUrl ? FileValidator.NormalizeUrl(x.FilePath) : x.FilePath), 
+                    StringComparer.OrdinalIgnoreCase);
+
+                var settings = App.Settings;
+                int addedCount = 0;
+                int skippedCount = 0;
+
+                foreach (var item in videoItems) {
+                    var normalizedUrl = item.IsUrl ? FileValidator.NormalizeUrl(item.FilePath) : item.FilePath;
+                    if (existingPaths.Contains(normalizedUrl)) {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    item.AssignedScreen = defaultScreen;
+                    item.Opacity = settings.DefaultOpacity;
+                    item.Volume = settings.DefaultVolume;
+                    AddedFiles.Add(item);
+                    existingPaths.Add(normalizedUrl);
+                    addedCount++;
+                }
+
+                if (skippedCount > 0) {
+                    SetStatusMessage($"Added {addedCount} video(s) from playlist, skipped {skippedCount} duplicate(s)", StatusMessageType.Success);
+                } else {
+                    SetStatusMessage($"Added {addedCount} video(s) from playlist", StatusMessageType.Success);
+                }
+
+                UpdateButtons();
+                SaveSession();
+            } catch (OperationCanceledException) {
+                SetStatusMessage("Playlist import cancelled", StatusMessageType.Warning);
+            } catch (Exception ex) {
+                Logger.Error("Error importing playlist", ex);
+                SetStatusMessage($"Error importing playlist: {ex.Message}", StatusMessageType.Error);
+            } finally {
+                IsLoading = false;
+            }
+        }
+
         private async System.Threading.Tasks.Task AddFilesAsync(string[] filePaths, CancellationToken cancellationToken = default) {
             IsLoading = true;
             SetStatusMessage("Validating files...", StatusMessageType.Info);
@@ -377,7 +620,7 @@ namespace TrainMeX.ViewModels {
                 
                 // Ensure screens are up to date
                 if (AvailableScreens.Count == 0) RefreshScreens();
-                var primary = AvailableScreens.FirstOrDefault(v => v.Screen.Primary) ?? AvailableScreens.FirstOrDefault();
+                var defaultScreen = GetDefaultScreen();
                 
                 // Use HashSet for O(1) lookups instead of O(n) Any() checks
                 var existingPaths = new HashSet<string>(AddedFiles.Select(x => x.FilePath), StringComparer.OrdinalIgnoreCase);
@@ -417,7 +660,7 @@ namespace TrainMeX.ViewModels {
                 if (isValid) {
                     var sanitizedPath = FileValidator.SanitizePath(filePath);
                     if (sanitizedPath != null) {
-                        var item = new VideoItem(sanitizedPath, primary);
+                        var item = new VideoItem(sanitizedPath, defaultScreen);
                         item.Opacity = settings.DefaultOpacity;
                         item.Volume = settings.DefaultVolume;
                         // Validate the file to set its validation status
@@ -540,7 +783,8 @@ namespace TrainMeX.ViewModels {
                         FilePath = item.FilePath,
                         ScreenDeviceName = item.AssignedScreen?.DeviceName,
                         Opacity = item.Opacity,
-                        Volume = item.Volume
+                        Volume = item.Volume,
+                        Title = item.Title // Save title if available
                     });
                 }
                 
@@ -590,6 +834,11 @@ namespace TrainMeX.ViewModels {
                             var videoItem = new VideoItem(item.FilePath, screen);
                             videoItem.Opacity = item.Opacity;
                             videoItem.Volume = item.Volume;
+                            
+                            // Set title if available (backward compatible - Title may be null for old playlists)
+                            if (!string.IsNullOrWhiteSpace(item.Title)) {
+                                videoItem.Title = item.Title;
+                            }
                             
                             // Validate the file
                             videoItem.Validate();
@@ -654,7 +903,8 @@ namespace TrainMeX.ViewModels {
                     FilePath = item.FilePath,
                     ScreenDeviceName = item.AssignedScreen?.DeviceName,
                     Opacity = item.Opacity,
-                    Volume = item.Volume
+                    Volume = item.Volume,
+                    Title = item.Title // Save title if available
                 }).ToList();
 
                 System.Threading.Tasks.Task.Run(() => {
@@ -701,6 +951,12 @@ namespace TrainMeX.ViewModels {
                             var videoItem = new VideoItem(item.FilePath, screen);
                             videoItem.Opacity = item.Opacity;
                             videoItem.Volume = item.Volume;
+                            
+                            // Set title if available (backward compatible - Title may be null for old sessions)
+                            if (!string.IsNullOrWhiteSpace(item.Title)) {
+                                videoItem.Title = item.Title;
+                            }
+                            
                             // Validate the file when loading from session
                             videoItem.Validate();
                             AddedFiles.Add(videoItem);
